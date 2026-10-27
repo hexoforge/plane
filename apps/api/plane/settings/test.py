@@ -11,6 +11,10 @@ DEBUG = True
 # Send it in a dummy outbox
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
+# Run celery tasks synchronously so tests don't need a live broker.
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True
+
 INSTALLED_APPS.append(  # noqa
     "plane.tests"
 )
