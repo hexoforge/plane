@@ -31,7 +31,7 @@ import { PagesViewToggle } from "../view-toggle";
 type Props = {
   pageType: TPageNavigationTabs;
   projectId: string;
-  storeType: EPageStoreType;
+  storeType: EPageStoreType.PROJECT;
   workspaceSlug: string;
 };
 

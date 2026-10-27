@@ -99,6 +99,7 @@ export class BasePage extends ExtendedBasePage implements TBasePage {
   project_ids?: string[] | undefined;
   parent: string | null | undefined;
   collection: string | null | undefined;
+  is_global: boolean | undefined;
   sort_order: number | undefined;
   created_by: string | undefined;
   updated_by: string | undefined;
@@ -139,6 +140,7 @@ export class BasePage extends ExtendedBasePage implements TBasePage {
     this.project_ids = page?.project_ids || undefined;
     this.parent = page?.parent || undefined;
     this.collection = page?.collection || undefined;
+    this.is_global = page?.is_global || undefined;
     this.sort_order = page?.sort_order;
     this.created_by = page?.created_by || undefined;
     this.updated_by = page?.updated_by || undefined;
@@ -167,6 +169,7 @@ export class BasePage extends ExtendedBasePage implements TBasePage {
       project_ids: observable,
       parent: observable.ref,
       collection: observable.ref,
+      is_global: observable.ref,
       sort_order: observable.ref,
       created_by: observable.ref,
       updated_by: observable.ref,
@@ -246,6 +249,7 @@ export class BasePage extends ExtendedBasePage implements TBasePage {
       project_ids: this.project_ids,
       parent: this.parent,
       collection: this.collection,
+      is_global: this.is_global,
       sort_order: this.sort_order,
       created_by: this.created_by,
       updated_by: this.updated_by,

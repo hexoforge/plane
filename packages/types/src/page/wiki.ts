@@ -1,3 +1,5 @@
+import type { TLogoProps } from "../common";
+
 export type TWikiAccess = 0 | 1;
 
 export type TPageShareRole = 0 | 1 | 2;
@@ -46,7 +48,7 @@ export type TWikiTreeNode = {
   access: TWikiAccess;
   sort_order: number;
   archived_at: string | null;
-  logo_props?: object;
+  logo_props?: TLogoProps;
 };
 
 export type TWikiTree = {

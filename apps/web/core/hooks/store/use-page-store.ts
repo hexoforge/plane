@@ -9,13 +9,16 @@ import { useContext } from "react";
 import { StoreContext } from "@/lib/store-context";
 // mobx store
 import type { IProjectPageStore } from "@/store/pages/project-page.store";
+import type { IWikiStore } from "@/store/wiki/wiki.store";
 
 export enum EPageStoreType {
   PROJECT = "PROJECT_PAGE",
+  WIKI = "WIKI_PAGE",
 }
 
 export type TReturnType = {
   [EPageStoreType.PROJECT]: IProjectPageStore;
+  [EPageStoreType.WIKI]: IWikiStore;
 };
 
 export const usePageStore = <T extends EPageStoreType>(storeType: T): TReturnType[T] => {
@@ -23,7 +26,10 @@ export const usePageStore = <T extends EPageStoreType>(storeType: T): TReturnTyp
   if (context === undefined) throw new Error("usePageStore must be used within StoreProvider");
 
   if (storeType === EPageStoreType.PROJECT) {
-    return context.projectPages;
+    return context.projectPages as TReturnType[T];
+  }
+  if (storeType === EPageStoreType.WIKI) {
+    return context.wiki as TReturnType[T];
   }
 
   throw new Error(`Invalid store type: ${storeType}`);

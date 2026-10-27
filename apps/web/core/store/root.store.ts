@@ -70,6 +70,8 @@ import type { IThemeStore } from "./theme.store";
 import { ThemeStore } from "./theme.store";
 import type { IUserStore } from "./user";
 import { UserStore } from "./user";
+import type { IWikiStore } from "./wiki/wiki.store";
+import { WikiStore } from "./wiki/wiki.store";
 import type { IWorkspaceRootStore } from "./workspace";
 
 enableStaticRendering(typeof window === "undefined");
@@ -91,6 +93,7 @@ export class CoreRootStore {
   analytics: IAnalyticsStore;
   projectPages: IProjectPageStore;
   projectPageCollections: IProjectPageCollectionStore;
+  wiki: IWikiStore;
   router: IRouterStore;
   commandPalette: ICommandPaletteStore;
   theme: IThemeStore;
@@ -130,6 +133,7 @@ export class CoreRootStore {
     this.projectInbox = new ProjectInboxStore(this);
     this.projectPages = new ProjectPageStore(this);
     this.projectPageCollections = new ProjectPageCollectionStore(this);
+    this.wiki = new WikiStore(this);
     this.projectEstimate = new ProjectEstimateStore(this);
     this.workspaceNotification = new WorkspaceNotificationStore(this);
     this.favorite = new FavoriteStore(this);
@@ -165,6 +169,7 @@ export class CoreRootStore {
     this.projectInbox = new ProjectInboxStore(this);
     this.projectPages = new ProjectPageStore(this);
     this.projectPageCollections = new ProjectPageCollectionStore(this);
+    this.wiki = new WikiStore(this);
     this.multipleSelect = new MultipleSelectStore();
     this.projectEstimate = new ProjectEstimateStore(this);
     this.workspaceNotification = new WorkspaceNotificationStore(this);

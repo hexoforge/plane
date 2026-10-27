@@ -19,7 +19,7 @@ import { PageListBlock } from "./block";
 
 type TPagesListRoot = {
   pageType: TPageNavigationTabs;
-  storeType: EPageStoreType;
+  storeType: EPageStoreType.PROJECT;
   projectId: string;
   activeCollectionId: string | null;
 };
