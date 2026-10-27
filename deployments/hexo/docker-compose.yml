@@ -1,4 +1,5 @@
 # Hexoforge deploy: web and backend built from this repo, Postgres and Redis are Dokploy services.
+# Use Dokploy isolated deployment so the proxy resolves web/api inside this stack only.
 x-api-build: &api-build
   context: ../../apps/api
   dockerfile: Dockerfile.api
@@ -45,7 +46,7 @@ services:
     image: makeplane/plane-live:${APP_RELEASE}
     restart: unless-stopped
     environment:
-      API_BASE_URL: http://api:8000
+      API_BASE_URL: http://plane-api:8000
       LIVE_SERVER_SECRET_KEY: ${LIVE_SERVER_SECRET_KEY}
       REDIS_URL: ${REDIS_URL}
     networks: [default, dokploy-network]
@@ -56,7 +57,10 @@ services:
     restart: unless-stopped
     environment: *app-env
     volumes: [logs_api:/code/plane/logs]
-    networks: [default, dokploy-network]
+    networks:
+      default:
+        aliases: [plane-api]
+      dokploy-network: {}
     depends_on: [migrator]
 
   worker:
@@ -101,7 +105,6 @@ services:
       FILE_SIZE_LIMIT: "5242880"
       BUCKET_NAME: uploads
     volumes: [proxy_config:/config, proxy_data:/data]
-    networks: [default, dokploy-network]
     depends_on: [web, api, space, admin, live]
 
 networks:
