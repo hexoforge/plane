@@ -22,10 +22,11 @@ import { usePage } from "@/hooks/store";
 type TPageListBlock = {
   pageId: string;
   storeType: EPageStoreType;
+  projectId: string;
 };
 
 export const PageListBlock = observer(function PageListBlock(props: TPageListBlock) {
-  const { pageId, storeType } = props;
+  const { pageId, storeType, projectId } = props;
   // refs
   const parentRef = useRef(null);
   // hooks
@@ -52,7 +53,9 @@ export const PageListBlock = observer(function PageListBlock(props: TPageListBlo
       }
       title={getPageName(name)}
       itemLink={getRedirectionLink()}
-      actionableItems={<BlockItemAction page={page} parentRef={parentRef} storeType={storeType} />}
+      actionableItems={
+        <BlockItemAction page={page} parentRef={parentRef} storeType={storeType} projectId={projectId} />
+      }
       isMobile={isMobile}
       parentRef={parentRef}
     />

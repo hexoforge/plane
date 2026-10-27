@@ -7,7 +7,7 @@
 import { useMemo, useState } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
-import { ArchiveRestoreIcon, FileOutput, LockKeyhole, LockKeyholeOpen } from "lucide-react";
+import { ArchiveRestoreIcon, FileOutput, LockKeyhole, LockKeyholeOpen, Share2 } from "lucide-react";
 // constants
 import { EPageAccess } from "@plane/constants";
 // plane editor
@@ -18,6 +18,7 @@ import { ContextMenu, CustomMenu } from "@plane/ui";
 // components
 import { cn } from "@plane/utils";
 import { DeletePageModal } from "@/components/pages/modals/delete-page-modal";
+import { PageShareModal } from "@/components/pages/share/share-modal";
 // hooks
 import { usePageOperations } from "@/hooks/use-page-operations";
 // plane web hooks
@@ -39,7 +40,8 @@ export type TPageActions =
   | "delete"
   | "version-history"
   | "export"
-  | "move";
+  | "move"
+  | "share";
 
 type Props = {
   extraOptions?: (TContextMenuItem & { key: TPageActions })[];
@@ -53,7 +55,8 @@ export const PageActions = observer(function PageActions(props: Props) {
   const { extraOptions, optionsOrder, page, parentRef, storeType } = props;
   // states
   const [deletePageModal, setDeletePageModal] = useState(false);
-  const [movePageModal, setMovePageModal] = useState(false);
+  const [_movePageModal, setMovePageModal] = useState(false);
+  const [shareModal, setShareModal] = useState(false);
   // params
   const { workspaceSlug } = useParams();
   // page flag
@@ -146,6 +149,13 @@ export const PageActions = observer(function PageActions(props: Props) {
           icon: FileOutput,
           shouldRender: canCurrentUserMovePage && isMovePageEnabled,
         },
+        {
+          key: "share",
+          action: () => setShareModal(true),
+          title: "Share",
+          icon: Share2,
+          shouldRender: access === EPageAccess.PRIVATE && !archived_at,
+        },
       ];
       if (extraOptions) {
         menuItems.push(...extraOptions);
@@ -184,6 +194,15 @@ export const PageActions = observer(function PageActions(props: Props) {
         page={page}
         storeType={storeType}
       />
+      {page.id && (
+        <PageShareModal
+          isOpen={shareModal}
+          onClose={() => setShareModal(false)}
+          workspaceSlug={workspaceSlug?.toString() ?? ""}
+          projectId={page.project_ids?.[0]}
+          pageId={page.id}
+        />
+      )}
       {parentRef && <ContextMenu parentRef={parentRef} items={arrangedOptions} />}
       <CustomMenu placement="bottom-end" optionsClassName="max-h-[90vh]" ellipsis closeOnSelect>
         {arrangedOptions.map((item) => {

@@ -20,10 +20,12 @@ import { PageHead } from "@/components/core/page-title";
 import { DetailedEmptyState } from "@/components/empty-state/detailed-empty-state-root";
 import { PagesListRoot } from "@/components/pages/list/root";
 import { PagesListView } from "@/components/pages/pages-list-view";
+import { PagesTreeRoot } from "@/components/pages/tree/root";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
 import { useUserPermissions } from "@/hooks/store/user";
 import { useAppRouter } from "@/hooks/use-app-router";
+import { useProjectPagesView } from "@/hooks/use-project-pages-view";
 // plane web hooks
 import { EPageStoreType } from "@/hooks/store";
 import type { Route } from "./+types/page";
@@ -47,6 +49,7 @@ function ProjectPagesPage({ params }: Route.ComponentProps) {
   // store hooks
   const { getProjectById, currentProjectDetails } = useProject();
   const { allowPermissions } = useUserPermissions();
+  const { viewMode, activeCollectionId } = useProjectPagesView();
   // derived values
   const project = getProjectById(projectId);
   const pageTitle = project?.name ? `${project?.name} - Pages` : undefined;
@@ -81,7 +84,21 @@ function ProjectPagesPage({ params }: Route.ComponentProps) {
         storeType={EPageStoreType.PROJECT}
         workspaceSlug={workspaceSlug}
       >
-        <PagesListRoot pageType={pageType} storeType={EPageStoreType.PROJECT} />
+        {viewMode === "tree" && pageType !== "archived" ? (
+          <PagesTreeRoot
+            pageType={pageType}
+            storeType={EPageStoreType.PROJECT}
+            projectId={projectId}
+            activeCollectionId={activeCollectionId}
+          />
+        ) : (
+          <PagesListRoot
+            pageType={pageType}
+            storeType={EPageStoreType.PROJECT}
+            projectId={projectId}
+            activeCollectionId={activeCollectionId}
+          />
+        )}
       </PagesListView>
     </>
   );
