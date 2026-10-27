@@ -20,6 +20,66 @@ def get_view_props():
     return {"full_width": False}
 
 
+class PageCollection(BaseModel):
+    PUBLIC_ACCESS = 0
+    PRIVATE_ACCESS = 1
+    DEFAULT_SORT_ORDER = 65535
+
+    ACCESS_CHOICES = ((PUBLIC_ACCESS, "Public"), (PRIVATE_ACCESS, "Private"))
+
+    workspace = models.ForeignKey("db.Workspace", on_delete=models.CASCADE, related_name="page_collections")
+    project = models.ForeignKey(
+        "db.Project",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="page_collections",
+    )
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default="")
+    access = models.PositiveSmallIntegerField(choices=ACCESS_CHOICES, default=PUBLIC_ACCESS)
+    owned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="page_collections"
+    )
+    sort_order = models.FloatField(default=DEFAULT_SORT_ORDER)
+    is_default = models.BooleanField(default=False)
+    archived_at = models.DateField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Page Collection"
+        verbose_name_plural = "Page Collections"
+        db_table = "page_collections"
+        ordering = ("sort_order", "name")
+        constraints = [
+            # project is nullable (null = company wiki) and Postgres treats NULLs as
+            # distinct in a unique index, so the null-project case needs its own
+            # constraint rather than relying on (workspace, project, name) alone.
+            models.UniqueConstraint(
+                fields=["workspace", "project", "name"],
+                condition=models.Q(deleted_at__isnull=True, project__isnull=False),
+                name="page_collection_unique_workspace_project_name",
+            ),
+            models.UniqueConstraint(
+                fields=["workspace", "name"],
+                condition=models.Q(deleted_at__isnull=True, project__isnull=True),
+                name="page_collection_unique_workspace_name_when_project_null",
+            ),
+            models.UniqueConstraint(
+                fields=["workspace", "project"],
+                condition=models.Q(is_default=True, deleted_at__isnull=True, project__isnull=False),
+                name="page_collection_unique_default_per_project",
+            ),
+            models.UniqueConstraint(
+                fields=["workspace"],
+                condition=models.Q(is_default=True, deleted_at__isnull=True, project__isnull=True),
+                name="page_collection_unique_default_per_workspace",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.workspace.slug} {self.name}"
+
+
 class Page(BaseModel):
     PRIVATE_ACCESS = 1
     PUBLIC_ACCESS = 0
@@ -43,6 +103,13 @@ class Page(BaseModel):
         null=True,
         blank=True,
         related_name="child_page",
+    )
+    collection = models.ForeignKey(
+        "db.PageCollection",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pages",
     )
     archived_at = models.DateField(null=True)
     is_locked = models.BooleanField(default=False)
@@ -180,3 +247,57 @@ class PageVersion(BaseModel):
             else strip_tags(self.description_html)
         )
         super(PageVersion, self).save(*args, **kwargs)
+
+
+class PageShare(BaseModel):
+    VIEW = 0
+    COMMENT = 1
+    EDIT = 2
+
+    ROLE_CHOICES = ((VIEW, "View"), (COMMENT, "Comment"), (EDIT, "Edit"))
+
+    page = models.ForeignKey("db.Page", on_delete=models.CASCADE, related_name="shares")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="page_shares")
+    workspace = models.ForeignKey("db.Workspace", on_delete=models.CASCADE, related_name="page_shares")
+    role = models.PositiveSmallIntegerField(choices=ROLE_CHOICES, default=VIEW)
+
+    class Meta:
+        verbose_name = "Page Share"
+        verbose_name_plural = "Page Shares"
+        db_table = "page_shares"
+        ordering = ("-created_at",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=["page", "user"],
+                condition=models.Q(deleted_at__isnull=True),
+                name="page_share_unique_page_user_when_deleted_at_null",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.page.name} {self.user.email}"
+
+
+class PageComment(BaseModel):
+    page = models.ForeignKey("db.Page", on_delete=models.CASCADE, related_name="comments")
+    workspace = models.ForeignKey("db.Workspace", on_delete=models.CASCADE, related_name="page_comments")
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="page_comments")
+    comment_html = models.TextField(blank=True, default="<p></p>")
+    comment_json = models.JSONField(default=dict, blank=True)
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="replies",
+    )
+    resolved = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "Page Comment"
+        verbose_name_plural = "Page Comments"
+        db_table = "page_comments"
+        ordering = ("created_at",)
+
+    def __str__(self):
+        return f"{self.page.name} comment by {self.actor.email}"
