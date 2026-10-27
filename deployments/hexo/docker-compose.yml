@@ -1,0 +1,121 @@
+# Hexoforge deploy: web and backend built from this repo, Postgres and Redis are Dokploy services.
+# Use Dokploy isolated deployment so the proxy resolves web/api inside this stack only.
+x-api-build: &api-build
+  context: ../../apps/api
+  dockerfile: Dockerfile.api
+
+x-app-env: &app-env
+  WEB_URL: ${WEB_URL}
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+  DEBUG: "0"
+  GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
+  DATABASE_URL: ${DATABASE_URL}
+  REDIS_URL: ${REDIS_URL}
+  AMQP_URL: ${CELERY_BROKER_URL}
+  SECRET_KEY: ${SECRET_KEY}
+  LIVE_SERVER_SECRET_KEY: ${LIVE_SERVER_SECRET_KEY}
+  API_KEY_RATE_LIMIT: 60/minute
+  USE_MINIO: "1"
+  MINIO_ENDPOINT_SSL: "1"
+  AWS_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY}
+  AWS_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY}
+  AWS_S3_ENDPOINT_URL: http://plane-minio:9000
+  AWS_S3_BUCKET_NAME: uploads
+  FILE_SIZE_LIMIT: "5242880"
+  EMAIL_HOST: ${EMAIL_HOST}
+  EMAIL_FROM: ${EMAIL_FROM}
+  RESEND_API_KEY: ${RESEND_API_KEY}
+
+services:
+  web:
+    build:
+      context: ../../
+      dockerfile: apps/web/Dockerfile.web
+    restart: unless-stopped
+    depends_on: [api]
+
+  space:
+    image: makeplane/plane-space:${APP_RELEASE}
+    restart: unless-stopped
+
+  admin:
+    image: makeplane/plane-admin:${APP_RELEASE}
+    restart: unless-stopped
+
+  live:
+    image: makeplane/plane-live:${APP_RELEASE}
+    restart: unless-stopped
+    environment:
+      API_BASE_URL: http://plane-api:8000
+      LIVE_SERVER_SECRET_KEY: ${LIVE_SERVER_SECRET_KEY}
+      REDIS_URL: ${REDIS_URL}
+    networks: [default, dokploy-network]
+
+  api:
+    build: *api-build
+    command: ./bin/docker-entrypoint-api.sh
+    restart: unless-stopped
+    environment: *app-env
+    volumes: [logs_api:/code/plane/logs]
+    networks:
+      default:
+        aliases: [plane-api]
+      dokploy-network: {}
+    depends_on: [migrator]
+
+  worker:
+    build: *api-build
+    command: ./bin/docker-entrypoint-worker.sh
+    restart: unless-stopped
+    environment: *app-env
+    volumes: [logs_worker:/code/plane/logs]
+    networks: [default, dokploy-network]
+
+  beat-worker:
+    build: *api-build
+    command: ./bin/docker-entrypoint-beat.sh
+    restart: unless-stopped
+    environment: *app-env
+    volumes: [logs_beat:/code/plane/logs]
+    networks: [default, dokploy-network]
+
+  migrator:
+    build: *api-build
+    command: ./bin/docker-entrypoint-migrator.sh
+    restart: on-failure
+    environment: *app-env
+    volumes: [logs_migrator:/code/plane/logs]
+    networks: [default, dokploy-network]
+
+  plane-minio:
+    image: minio/minio:latest
+    command: server /export --console-address ":9090"
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    volumes: [uploads:/export]
+
+  proxy:
+    image: makeplane/plane-proxy:${APP_RELEASE}
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      SITE_ADDRESS: ":80"
+      FILE_SIZE_LIMIT: "5242880"
+      BUCKET_NAME: uploads
+    volumes: [proxy_config:/config, proxy_data:/data]
+    depends_on: [web, api, space, admin, live]
+
+networks:
+  dokploy-network:
+    external: true
+
+volumes:
+  uploads:
+  logs_api:
+  logs_worker:
+  logs_beat:
+  logs_migrator:
+  proxy_config:
+  proxy_data:
