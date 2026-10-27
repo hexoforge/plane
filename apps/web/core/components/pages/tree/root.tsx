@@ -12,6 +12,7 @@ import { buildPageTree, pageBelongsToCollection } from "@plane/utils";
 // plane web hooks
 import type { EPageStoreType } from "@/hooks/store";
 import { usePageStore, useProjectPageCollections } from "@/hooks/store";
+import type { IProjectPageStore } from "@/store/pages/project-page.store";
 // local imports
 import { PageTreeNode } from "./tree-node";
 
@@ -25,7 +26,7 @@ type Props = {
 export const PagesTreeRoot = observer(function PagesTreeRoot(props: Props) {
   const { pageType, storeType, projectId, activeCollectionId } = props;
   // store hooks
-  const { getCurrentProjectFilteredPageIdsByTab, getPageById } = usePageStore(storeType);
+  const { getCurrentProjectFilteredPageIdsByTab, getPageById } = usePageStore(storeType) as IProjectPageStore;
   const { getDefaultCollectionId } = useProjectPageCollections();
   // derived values
   const filteredPageIds = getCurrentProjectFilteredPageIdsByTab(pageType);

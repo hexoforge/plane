@@ -30,6 +30,13 @@ export class PageShareService extends APIService {
       : `/api/workspaces/${workspaceSlug}/wiki/pages/${pageId}`;
   }
 
+  // Share detail routes are flat (not nested under the page) on the API side.
+  private getShareDetailUrl(workspaceSlug: string, shareId: string, projectId?: string) {
+    return projectId
+      ? `/api/workspaces/${workspaceSlug}/projects/${projectId}/shares/${shareId}/`
+      : `/api/workspaces/${workspaceSlug}/wiki/shares/${shareId}/`;
+  }
+
   async fetchPageOwner(workspaceSlug: string, pageId: string, projectId?: string): Promise<string | undefined> {
     return this.get(`${this.getPageBaseUrl(workspaceSlug, pageId, projectId)}/`)
       .then((response) => response?.data?.owned_by)
@@ -61,20 +68,20 @@ export class PageShareService extends APIService {
 
   async update(
     workspaceSlug: string,
-    pageId: string,
+    _pageId: string,
     shareId: string,
     data: TPageShareUpdateData,
     projectId?: string
   ): Promise<TPageShare> {
-    return this.patch(`${this.getPageBaseUrl(workspaceSlug, pageId, projectId)}/shares/${shareId}/`, data)
+    return this.patch(this.getShareDetailUrl(workspaceSlug, shareId, projectId), data)
       .then((response) => response?.data)
       .catch((error) => {
         throw error?.response?.data;
       });
   }
 
-  async remove(workspaceSlug: string, pageId: string, shareId: string, projectId?: string): Promise<void> {
-    return this.delete(`${this.getPageBaseUrl(workspaceSlug, pageId, projectId)}/shares/${shareId}/`)
+  async remove(workspaceSlug: string, _pageId: string, shareId: string, projectId?: string): Promise<void> {
+    return this.delete(this.getShareDetailUrl(workspaceSlug, shareId, projectId))
       .then((response) => response?.data)
       .catch((error) => {
         throw error?.response?.data;

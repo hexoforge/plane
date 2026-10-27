@@ -307,7 +307,15 @@ class PageCommentPermission(BasePermission):
             return False
 
         role, page = self._resolve_role_and_page(request, view)
-        if not role or role == GUEST or page is None:
+        if not role or role == GUEST:
+            return False
+
+        # Flat comments/<pk>/ route carries no page_id; defer to the object-level
+        # check (author or admin) rather than denying every edit/delete.
+        if view.kwargs.get("page_id") is None:
+            return True
+
+        if page is None:
             return False
 
         if page.owned_by_id == request.user.id:

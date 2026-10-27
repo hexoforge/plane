@@ -157,12 +157,20 @@ class WikiPagesDescriptionViewSet(BaseViewSet):
     permission_classes = [WikiPagePermission]
 
     def retrieve(self, request, slug, page_id):
-        page = Page.objects.get(
-            Q(owned_by=self.request.user) | Q(access=Page.PUBLIC_ACCESS),
-            pk=page_id,
-            workspace__slug=slug,
-            is_global=True,
+        page = (
+            Page.objects.filter(
+                Q(owned_by=self.request.user)
+                | Q(access=Page.PUBLIC_ACCESS)
+                | Q(shares__user=self.request.user, shares__deleted_at__isnull=True),
+                pk=page_id,
+                workspace__slug=slug,
+                is_global=True,
+            )
+            .distinct()
+            .first()
         )
+        if page is None:
+            return Response({"error": "Page not found"}, status=status.HTTP_404_NOT_FOUND)
         binary_data = page.description_binary
 
         def stream_data():
@@ -173,12 +181,20 @@ class WikiPagesDescriptionViewSet(BaseViewSet):
         return response
 
     def partial_update(self, request, slug, page_id):
-        page = Page.objects.get(
-            Q(owned_by=self.request.user) | Q(access=Page.PUBLIC_ACCESS),
-            pk=page_id,
-            workspace__slug=slug,
-            is_global=True,
+        page = (
+            Page.objects.filter(
+                Q(owned_by=self.request.user)
+                | Q(access=Page.PUBLIC_ACCESS)
+                | Q(shares__user=self.request.user, shares__deleted_at__isnull=True),
+                pk=page_id,
+                workspace__slug=slug,
+                is_global=True,
+            )
+            .distinct()
+            .first()
         )
+        if page is None:
+            return Response({"error": "Page not found"}, status=status.HTTP_404_NOT_FOUND)
 
         if page.is_locked:
             return Response(
