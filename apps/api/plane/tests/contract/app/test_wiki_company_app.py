@@ -234,6 +234,76 @@ class TestWikiComments:
         )
         assert allowed.status_code == 201
 
+    @pytest.mark.django_db
+    def test_author_can_edit_and_delete_comment_via_flat_route(self, session_client, workspace):
+        """The flat comments/<pk>/ route carries no page_id; the author must still
+        be able to edit and delete their own comment."""
+        collection_id = _create_public_collection(workspace, session_client)
+        page_id = session_client.post(
+            _pages_url(workspace.slug), {"name": "Doc", "collection": collection_id}, format="json"
+        ).data["id"]
+
+        comment_id = session_client.post(
+            f"/api/workspaces/{workspace.slug}/wiki/pages/{page_id}/comments/",
+            {"comment_html": "<p>first</p>"},
+            format="json",
+        ).data["id"]
+
+        edited = session_client.patch(
+            f"/api/workspaces/{workspace.slug}/wiki/comments/{comment_id}/",
+            {"comment_html": "<p>edited</p>"},
+            format="json",
+        )
+        assert edited.status_code == 200, edited.data
+
+        deleted = session_client.delete(f"/api/workspaces/{workspace.slug}/wiki/comments/{comment_id}/")
+        assert deleted.status_code == 204
+
+    @pytest.mark.django_db
+    def test_non_author_member_cannot_edit_comment_via_flat_route(self, session_client, workspace):
+        collection_id = _create_public_collection(workspace, session_client)
+        page_id = session_client.post(
+            _pages_url(workspace.slug), {"name": "Doc", "collection": collection_id}, format="json"
+        ).data["id"]
+        comment_id = session_client.post(
+            f"/api/workspaces/{workspace.slug}/wiki/pages/{page_id}/comments/",
+            {"comment_html": "<p>owner comment</p>"},
+            format="json",
+        ).data["id"]
+
+        _, member_client = _make_member(workspace, role=15)
+        response = member_client.patch(
+            f"/api/workspaces/{workspace.slug}/wiki/comments/{comment_id}/",
+            {"comment_html": "<p>tampered</p>"},
+            format="json",
+        )
+        assert response.status_code == 403
+
+
+@pytest.mark.contract
+class TestWikiPageDescription:
+    @pytest.mark.django_db
+    def test_shared_user_can_fetch_private_page_description(self, session_client, workspace):
+        """A user with a share on a private page must be able to load its binary
+        description (used by the collaborative editor), not get a 404/500."""
+        collection_id = _create_public_collection(workspace, session_client)
+        page_id = session_client.post(
+            _pages_url(workspace.slug),
+            {"name": "Secret", "collection": collection_id, "access": Page.PRIVATE_ACCESS},
+            format="json",
+        ).data["id"]
+        page = Page.objects.get(pk=page_id)
+
+        other_user, other_client = _make_member(workspace, role=15)
+        description_url = f"/api/workspaces/{workspace.slug}/wiki/pages/{page_id}/description/"
+
+        denied = other_client.get(description_url)
+        assert denied.status_code == 403
+
+        PageShare.objects.create(page=page, user=other_user, workspace=workspace, role=PageShare.VIEW)
+        allowed = other_client.get(description_url)
+        assert allowed.status_code == 200
+
 
 @pytest.mark.contract
 class TestWikiTree:
