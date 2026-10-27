@@ -103,6 +103,11 @@ from .page import (
     PageVersionSerializer,
     PageBinaryUpdateSerializer,
     PageVersionDetailSerializer,
+    WikiPageSerializer,
+    WikiPageDetailSerializer,
+    PageCollectionSerializer,
+    PageShareSerializer,
+    PageCommentSerializer,
 )
 
 from .estimate import (
