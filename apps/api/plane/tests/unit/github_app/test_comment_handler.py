@@ -82,6 +82,36 @@ class TestHandleIssueComment:
         assert not IssueComment.objects.filter(external_id="9001").exists()
         assert not GithubCommentLink.objects.filter(gh_comment_id=9001).exists()
 
+    def test_own_app_comment_is_skipped_before_link_exists(self, issue_link, settings):
+        # Webhook echo of a comment the App itself posted, arriving before the
+        # outbound task has written its GithubCommentLink(source="plane").
+        settings.GITHUB_APP_ID = "424242"
+        settings.GITHUB_APP_SLUG = "plane-app"
+        payload = comment_payload(
+            comment={**comment_payload()["comment"], "performed_via_github_app": {"id": 424242}}
+        )
+        result = handle_issue_comment(payload)
+        assert result == "skipped"
+        assert IssueComment.objects.filter(external_source="github").count() == 0
+        assert not GithubCommentLink.objects.filter(gh_comment_id=9001).exists()
+
+    def test_own_app_comment_detected_by_bot_login_is_skipped(self, issue_link, settings):
+        settings.GITHUB_APP_ID = "424242"
+        settings.GITHUB_APP_SLUG = "plane-app"
+        payload = comment_payload(
+            comment={**comment_payload()["comment"], "user": {"type": "Bot", "login": "plane-app[bot]"}}
+        )
+        assert handle_issue_comment(payload) == "skipped"
+        assert IssueComment.objects.filter(external_source="github").count() == 0
+
+    def test_human_comment_is_not_treated_as_own_app(self, issue_link, settings):
+        settings.GITHUB_APP_ID = "424242"
+        settings.GITHUB_APP_SLUG = "plane-app"
+        payload = comment_payload(
+            comment={**comment_payload()["comment"], "user": {"type": "User", "login": "octocat"}}
+        )
+        assert handle_issue_comment(payload) == "processed"
+
     def test_unknown_issue_is_skipped(self, linked_repo):
         result = handle_issue_comment(comment_payload(issue={"number": 999}))
         assert result == "skipped"

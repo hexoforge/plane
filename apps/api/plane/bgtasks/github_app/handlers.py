@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # See the LICENSE file for details.
 
+from django.conf import settings
 from django.utils import timezone
 
 from plane.db.models import (
@@ -218,6 +219,24 @@ def handle_issues(payload):
     return "processed"
 
 
+def _is_own_app_comment(comment):
+    """True if this comment was posted by our own GitHub App.
+
+    The App only ever posts comments that originated from Plane, so any comment
+    it authored is an echo. Detect it before a GithubCommentLink exists, closing
+    the window where a fast webhook echo would otherwise be mirrored back as a
+    duplicate Plane comment.
+    """
+    app = comment.get("performed_via_github_app") or {}
+    app_id = settings.GITHUB_APP_ID
+    if app_id and str(app.get("id")) == str(app_id):
+        return True
+
+    slug = settings.GITHUB_APP_SLUG
+    user = comment.get("user") or {}
+    return bool(slug) and user.get("type") == "Bot" and user.get("login") == f"{slug}[bot]"
+
+
 def handle_issue_comment(payload):
     action = payload.get("action")
     gh_issue = payload.get("issue") or {}
@@ -228,6 +247,11 @@ def handle_issue_comment(payload):
     # Comments on pull requests arrive as issue_comment too; only native
     # GitHub issues map to a GithubIssueLink.
     if "pull_request" in gh_issue:
+        return "skipped"
+
+    # Drop echoes of comments we posted ourselves, even before their
+    # GithubCommentLink(source="plane") row has been written.
+    if _is_own_app_comment(comment):
         return "skipped"
 
     linked_repo = get_linked_repo(installation.get("id"), repo.get("id"))

@@ -80,6 +80,9 @@ class TestHandleIssues:
         link = GithubIssueLink.objects.get(linked_repo=linked_repo, gh_issue_number=42)
         assert link.issue.state_id == state_mapping.issue_closed_state_id
         assert link.gh_state == "closed"
+        # Moving into a completed-group state stamps completed_at (as Issue.save does).
+        link.issue.refresh_from_db()
+        assert link.issue.completed_at is not None
 
     def test_reopened_moves_to_reopened_state(self, linked_repo, state_mapping):
         handle_issues(issue_payload())
@@ -97,6 +100,9 @@ class TestHandleIssues:
         )
         link = GithubIssueLink.objects.get(linked_repo=linked_repo, gh_issue_number=42)
         assert link.issue.state_id == state_mapping.issue_reopened_state_id
+        # Leaving the completed group clears completed_at.
+        link.issue.refresh_from_db()
+        assert link.issue.completed_at is None
 
     def test_closed_without_state_mapping_does_not_crash(self, linked_repo, project):
         # No GithubProjectStateMapping configured for this project.
