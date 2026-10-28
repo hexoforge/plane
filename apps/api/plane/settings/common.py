@@ -357,6 +357,7 @@ CELERY_IMPORTS = (
     "plane.bgtasks.issue_description_version_sync",
     # github app integration
     "plane.bgtasks.github_app.process_delivery",
+    "plane.bgtasks.github_app.outbound",
 )
 
 FILE_SIZE_LIMIT = int(os.environ.get("FILE_SIZE_LIMIT", 5242880))
@@ -365,12 +366,6 @@ FILE_SIZE_LIMIT = int(os.environ.get("FILE_SIZE_LIMIT", 5242880))
 UNSPLASH_ACCESS_KEY = os.environ.get("UNSPLASH_ACCESS_KEY")
 # Github Access Token
 GITHUB_ACCESS_TOKEN = os.environ.get("GITHUB_ACCESS_TOKEN", False)
-
-# Github App integration
-GITHUB_APP_ID = os.environ.get("GITHUB_APP_ID")
-GITHUB_APP_PRIVATE_KEY = os.environ.get("GITHUB_APP_PRIVATE_KEY")
-GITHUB_APP_WEBHOOK_SECRET = os.environ.get("GITHUB_APP_WEBHOOK_SECRET")
-GITHUB_APP_SLUG = os.environ.get("GITHUB_APP_SLUG")
 
 # Analytics
 ANALYTICS_SECRET_KEY = os.environ.get("ANALYTICS_SECRET_KEY", False)
