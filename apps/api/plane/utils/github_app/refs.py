@@ -2,32 +2,37 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # See the LICENSE file for details.
 
-# Python imports
 import re
 
-WORK_ITEM_PATTERN = re.compile(r"\b([A-Z][A-Z0-9]{0,11})-(\d+)\b", re.IGNORECASE)
-ISSUE_NUMBER_PATTERN = re.compile(r"\b(?:fixes|closes|resolves)\s+#(\d+)\b", re.IGNORECASE)
+WORK_ITEM_REF_PATTERN = re.compile(r"\b([A-Za-z][A-Za-z0-9]{0,11})-(\d+)\b")
+CLOSING_KEYWORD_PATTERN = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)\b", re.IGNORECASE)
 
 
-def extract_refs(text: str, identifiers: list[str]) -> dict:
-    """Extract Plane work item refs (IDENT-123) and `fixes #N` style GitHub issue refs.
+def extract_refs(text: str | None, identifiers) -> list[tuple[str, int]]:
+    """Find PROJ-123 style work item references in text.
 
-    `identifiers` are the project identifiers linked to the repo; a work item ref only
-    counts if its identifier matches one of them (case insensitive).
+    Only refs whose identifier (case insensitive) is in `identifiers` are
+    returned, as (identifier, sequence_id) pairs with the identifier
+    normalized to uppercase. Used for matching branch names, PR/issue
+    titles and bodies against known project identifiers.
     """
-    work_items = set()
-    issue_numbers = set()
-
     if not text:
-        return {"work_items": work_items, "issue_numbers": issue_numbers}
+        return []
 
     identifier_set = {identifier.upper() for identifier in identifiers}
-    for match in WORK_ITEM_PATTERN.finditer(text):
-        identifier = match.group(1).upper()
-        if identifier in identifier_set:
-            work_items.add((identifier, int(match.group(2))))
+    refs = []
+    seen = set()
+    for identifier, number in WORK_ITEM_REF_PATTERN.findall(text):
+        normalized = identifier.upper()
+        key = (normalized, number)
+        if normalized in identifier_set and key not in seen:
+            seen.add(key)
+            refs.append((normalized, int(number)))
+    return refs
 
-    for match in ISSUE_NUMBER_PATTERN.finditer(text):
-        issue_numbers.add(int(match.group(1)))
 
-    return {"work_items": work_items, "issue_numbers": issue_numbers}
+def extract_closing_refs(text: str | None) -> list[int]:
+    """Find 'fixes/closes/resolves #N' references to a GitHub issue number."""
+    if not text:
+        return []
+    return [int(number) for number in dict.fromkeys(CLOSING_KEYWORD_PATTERN.findall(text))]

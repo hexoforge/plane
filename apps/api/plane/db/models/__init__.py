@@ -20,10 +20,17 @@ from .exporter import ExporterHistory
 from .importer import Importer
 from .intake import Intake, IntakeIssue
 from .integration import (
+    GithubAppInstallation,
+    GithubCommentLink,
     GithubCommentSync,
+    GithubIssueLink,
     GithubIssueSync,
+    GithubLinkedRepository,
+    GithubProjectStateMapping,
+    GithubPullRequestLink,
     GithubRepository,
     GithubRepositorySync,
+    GithubWebhookDelivery,
     Integration,
     SlackProjectSync,
     WorkspaceIntegration,
