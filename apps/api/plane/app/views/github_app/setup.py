@@ -40,8 +40,8 @@ class GithubSetupCallbackEndpoint(BaseAPIView):
         if not workspace or not user:
             return Response({"error": "invalid state"}, status=status.HTTP_400_BAD_REQUEST)
 
-        client = GithubAppClient()
-        installation_data = client.get_installation(int(installation_id))
+        client = GithubAppClient(int(installation_id))
+        installation_data = client.get_installation()
         account = installation_data.get("account") or {}
 
         upsert_installation(

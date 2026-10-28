@@ -42,6 +42,23 @@ class TestGithubSetupCallback:
         assert installation.account_login == "acme"
 
     @pytest.mark.django_db
+    def test_client_is_called_with_installation_bound_signature(self, api_client, workspace, create_user):
+        # autospec enforces the real GithubAppClient signature: installation id in
+        # the constructor, get_installation() with no args. Guards the view against
+        # drifting back to GithubAppClient().get_installation(id).
+        state = sign_setup_state(workspace.slug, create_user.id)
+        with patch("plane.app.views.github_app.setup.GithubAppClient", autospec=True) as MockClient:
+            MockClient.return_value.get_installation.return_value = {
+                "account": {"login": "acme", "type": "Organization", "id": 99},
+                "target_id": 99,
+            }
+            response = api_client.get(self.url, {"installation_id": "555", "state": state})
+
+        assert response.status_code == status.HTTP_302_FOUND
+        MockClient.assert_called_once_with(555)
+        MockClient.return_value.get_installation.assert_called_once_with()
+
+    @pytest.mark.django_db
     def test_expired_state_is_rejected(self, api_client, workspace, create_user):
         state = signing.dumps(
             {"workspace_slug": workspace.slug, "user_id": str(create_user.id)},

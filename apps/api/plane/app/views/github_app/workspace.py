@@ -56,8 +56,8 @@ class GithubWorkspaceInstallationEndpoint(BaseAPIView):
             return Response({"error": "installation_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         workspace = Workspace.objects.get(slug=slug)
-        client = GithubAppClient()
-        installation_data = client.get_installation(int(installation_id))
+        client = GithubAppClient(int(installation_id))
+        installation_data = client.get_installation()
         account = installation_data.get("account") or {}
 
         installation = upsert_installation(
@@ -93,8 +93,8 @@ class GithubWorkspaceRepositoriesEndpoint(BaseAPIView):
         if not installation:
             return Response({"error": "no installation"}, status=status.HTTP_400_BAD_REQUEST)
 
-        client = GithubAppClient()
-        repos = client.list_installation_repos(installation.installation_id)
+        client = GithubAppClient(installation.installation_id)
+        repos = client.list_installation_repos()
         linked_project_by_repo_id = {
             link.repo_id: str(link.project_id)
             for link in GithubLinkedRepository.objects.filter(workspace__slug=slug, is_active=True)

@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # See the LICENSE file for details.
 
+from unittest.mock import patch
+
 import pytest
 from django.urls import reverse
 from django.utils import timezone
@@ -77,6 +79,43 @@ class TestWorkspaceIntegrationPermissions:
         url = reverse("workspace-github-integration", kwargs={"slug": workspace.slug})
         response = session_client.get(url)
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    @pytest.mark.django_db
+    def test_admin_connect_uses_installation_bound_client(self, session_client, workspace):
+        # autospec enforces the real client signature so the view can't regress to
+        # GithubAppClient().get_installation(id).
+        url = reverse("workspace-github-installation", kwargs={"slug": workspace.slug})
+        with patch(
+            "plane.app.views.github_app.workspace.GithubAppClient", autospec=True
+        ) as MockClient:
+            MockClient.return_value.get_installation.return_value = {
+                "account": {"login": "acme", "type": "Organization", "id": 7},
+                "target_id": 7,
+            }
+            response = session_client.post(url, {"installation_id": 555}, format="json")
+        assert response.status_code == status.HTTP_201_CREATED
+        MockClient.assert_called_once_with(555)
+        MockClient.return_value.get_installation.assert_called_once_with()
+
+    @pytest.mark.django_db
+    def test_admin_lists_installation_repos_via_bound_client(self, session_client, workspace, create_user):
+        GithubAppInstallation.objects.create(
+            workspace=workspace,
+            installation_id=555,
+            account_login="acme",
+            account_type="Organization",
+            target_id=1,
+            installed_by=create_user,
+        )
+        url = reverse("workspace-github-repositories", kwargs={"slug": workspace.slug})
+        with patch(
+            "plane.app.views.github_app.workspace.GithubAppClient", autospec=True
+        ) as MockClient:
+            MockClient.return_value.list_installation_repos.return_value = []
+            response = session_client.get(url)
+        assert response.status_code == status.HTTP_200_OK
+        MockClient.assert_called_once_with(555)
+        MockClient.return_value.list_installation_repos.assert_called_once_with()
 
     @pytest.mark.django_db
     def test_admin_can_disconnect_installation(self, session_client, workspace, create_user):
@@ -220,6 +259,8 @@ class TestIssueGithubDetailPermissions:
         response = session_client.get(url)
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["pull_requests"]) == 1
+        # The web PR/issue cards render repository_full_name; the serializer must expose it.
+        assert response.data["pull_requests"][0]["repository_full_name"] == "acme/widgets"
 
     @pytest.mark.django_db
     def test_guest_is_forbidden_when_repo_is_private(
@@ -266,3 +307,4 @@ class TestIssueGithubDetailPermissions:
         response = session_client.get(url)
         assert response.status_code == status.HTTP_200_OK
         assert response.data["issue_link"] is not None
+        assert response.data["issue_link"]["repository_full_name"] == "acme/widgets"
