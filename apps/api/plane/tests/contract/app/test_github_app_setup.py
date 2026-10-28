@@ -10,7 +10,7 @@ from django.urls import reverse
 from rest_framework import status
 
 from plane.app.views.github_app.base import sign_setup_state
-from plane.db.models import GithubAppInstallation
+from plane.db.models import GithubAppInstallation, User, WorkspaceMember
 
 
 @pytest.fixture(autouse=True)
@@ -57,6 +57,17 @@ class TestGithubSetupCallback:
         assert response.status_code == status.HTTP_302_FOUND
         MockClient.assert_called_once_with(555)
         MockClient.return_value.get_installation.assert_called_once_with()
+
+    @pytest.mark.django_db
+    def test_non_admin_in_state_is_forbidden(self, api_client, workspace):
+        # Role could have been downgraded while the 1h-signed state was still valid.
+        member = User.objects.create_user(email="member@example.com", username="member")
+        WorkspaceMember.objects.create(workspace=workspace, member=member, role=15)
+        state = sign_setup_state(workspace.slug, member.id)
+        with patch("plane.app.views.github_app.setup.GithubAppClient", autospec=True):
+            response = api_client.get(self.url, {"installation_id": "555", "state": state})
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert not GithubAppInstallation.objects.filter(workspace=workspace).exists()
 
     @pytest.mark.django_db
     def test_expired_state_is_rejected(self, api_client, workspace, create_user):
