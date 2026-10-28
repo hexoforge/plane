@@ -11,9 +11,33 @@ from plane.app.views import (
     PagesDescriptionViewSet,
     PageVersionEndpoint,
     PageDuplicateEndpoint,
+    PageCollectionViewSet,
+    PageShareViewSet,
 )
 
 urlpatterns = [
+    # project wiki: page collections
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/page-collections/",
+        PageCollectionViewSet.as_view({"get": "list", "post": "create"}),
+        name="project-page-collections",
+    ),
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/page-collections/<uuid:pk>/",
+        PageCollectionViewSet.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"}),
+        name="project-page-collections",
+    ),
+    # project wiki: page shares
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/pages/<uuid:page_id>/shares/",
+        PageShareViewSet.as_view({"get": "list", "post": "create"}),
+        name="project-page-shares",
+    ),
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/shares/<uuid:pk>/",
+        PageShareViewSet.as_view({"patch": "partial_update", "delete": "destroy"}),
+        name="project-shares",
+    ),
     path(
         "workspaces/<str:slug>/projects/<uuid:project_id>/pages-summary/",
         PageViewSet.as_view({"get": "summary"}),

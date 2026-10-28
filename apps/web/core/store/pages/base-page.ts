@@ -97,6 +97,10 @@ export class BasePage extends ExtendedBasePage implements TBasePage {
   archived_at: string | null | undefined;
   workspace: string | undefined;
   project_ids?: string[] | undefined;
+  parent: string | null | undefined;
+  collection: string | null | undefined;
+  is_global: boolean | undefined;
+  sort_order: number | undefined;
   created_by: string | undefined;
   updated_by: string | undefined;
   created_at: Date | undefined;
@@ -134,6 +138,10 @@ export class BasePage extends ExtendedBasePage implements TBasePage {
     this.archived_at = page?.archived_at || undefined;
     this.workspace = page?.workspace || undefined;
     this.project_ids = page?.project_ids || undefined;
+    this.parent = page?.parent || undefined;
+    this.collection = page?.collection || undefined;
+    this.is_global = page?.is_global || undefined;
+    this.sort_order = page?.sort_order;
     this.created_by = page?.created_by || undefined;
     this.updated_by = page?.updated_by || undefined;
     this.created_at = page?.created_at || undefined;
@@ -159,6 +167,10 @@ export class BasePage extends ExtendedBasePage implements TBasePage {
       archived_at: observable.ref,
       workspace: observable.ref,
       project_ids: observable,
+      parent: observable.ref,
+      collection: observable.ref,
+      is_global: observable.ref,
+      sort_order: observable.ref,
       created_by: observable.ref,
       updated_by: observable.ref,
       created_at: observable.ref,
@@ -235,6 +247,10 @@ export class BasePage extends ExtendedBasePage implements TBasePage {
       archived_at: this.archived_at,
       workspace: this.workspace,
       project_ids: this.project_ids,
+      parent: this.parent,
+      collection: this.collection,
+      is_global: this.is_global,
+      sort_order: this.sort_order,
       created_by: this.created_by,
       updated_by: this.updated_by,
       created_at: this.created_at,

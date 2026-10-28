@@ -14,7 +14,10 @@ from plane.utils.content_validator import (
 )
 from plane.db.models import (
     Page,
+    PageCollection,
+    PageComment,
     PageLabel,
+    PageShare,
     Label,
     ProjectPage,
     Project,
@@ -55,6 +58,8 @@ class PageSerializer(BaseSerializer):
             "logo_props",
             "label_ids",
             "project_ids",
+            "collection",
+            "sort_order",
         ]
         read_only_fields = ["workspace", "owned_by"]
 
@@ -131,6 +136,56 @@ class PageDetailSerializer(PageSerializer):
 
     class Meta(PageSerializer.Meta):
         fields = PageSerializer.Meta.fields + ["description_html"]
+
+
+class WikiPageSerializer(PageSerializer):
+    """Company wiki pages: workspace scoped, no project, always in a collection."""
+
+    collection = serializers.PrimaryKeyRelatedField(queryset=PageCollection.objects.all())
+
+    class Meta(PageSerializer.Meta):
+        pass
+
+    def create(self, validated_data):
+        labels = validated_data.pop("labels", None)
+        workspace_id = self.context["workspace_id"]
+        owned_by_id = self.context["owned_by_id"]
+        description_json = self.context["description_json"]
+        description_binary = self.context["description_binary"]
+        description_html = self.context["description_html"]
+
+        page = Page.objects.create(
+            **validated_data,
+            description_json=description_json,
+            description_binary=description_binary,
+            description_html=description_html,
+            owned_by_id=owned_by_id,
+            workspace_id=workspace_id,
+            is_global=True,
+        )
+
+        if labels is not None:
+            PageLabel.objects.bulk_create(
+                [
+                    PageLabel(
+                        label=label,
+                        page=page,
+                        workspace_id=page.workspace_id,
+                        created_by_id=page.created_by_id,
+                        updated_by_id=page.updated_by_id,
+                    )
+                    for label in labels
+                ],
+                batch_size=10,
+            )
+        return page
+
+
+class WikiPageDetailSerializer(WikiPageSerializer):
+    description_html = serializers.CharField()
+
+    class Meta(WikiPageSerializer.Meta):
+        fields = WikiPageSerializer.Meta.fields + ["description_html"]
 
 
 class PageVersionSerializer(BaseSerializer):
@@ -223,3 +278,53 @@ class PageBinaryUpdateSerializer(serializers.Serializer):
 
         instance.save()
         return instance
+
+
+class PageCollectionSerializer(BaseSerializer):
+    page_count = serializers.IntegerField(read_only=True, required=False)
+
+    class Meta:
+        model = PageCollection
+        fields = [
+            "id",
+            "workspace",
+            "project",
+            "name",
+            "description",
+            "access",
+            "owned_by",
+            "sort_order",
+            "is_default",
+            "archived_at",
+            "page_count",
+            "created_at",
+            "updated_at",
+            "created_by",
+            "updated_by",
+        ]
+        read_only_fields = ["workspace", "project", "owned_by", "is_default", "archived_at"]
+
+
+class PageShareSerializer(BaseSerializer):
+    class Meta:
+        model = PageShare
+        fields = ["id", "page", "user", "workspace", "role", "created_at", "updated_at"]
+        read_only_fields = ["page", "workspace"]
+
+
+class PageCommentSerializer(BaseSerializer):
+    class Meta:
+        model = PageComment
+        fields = [
+            "id",
+            "page",
+            "workspace",
+            "actor",
+            "comment_html",
+            "comment_json",
+            "parent",
+            "resolved",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["page", "workspace", "actor"]

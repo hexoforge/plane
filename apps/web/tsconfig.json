@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "rootDirs": [".", "./.react-router/types"],
+    "lib": ["DOM", "DOM.Iterable", "ES2023"],
     "paths": {
       "@/*": ["./core/*"],
       "@/app/*": ["./app/*"],

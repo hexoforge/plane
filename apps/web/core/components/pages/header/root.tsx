@@ -18,17 +18,20 @@ import { FiltersDropdown } from "@/components/issues/issue-layouts/filters";
 import { useMember } from "@/hooks/store/use-member";
 import { usePageStore } from "@/hooks/store";
 import type { EPageStoreType } from "@/hooks/store";
+import { useProjectPagesView } from "@/hooks/use-project-pages-view";
 // local imports
-import { PageAppliedFiltersList } from "../list/applied-filters";
-import { PageFiltersSelection } from "../list/filters";
+import { PageCollectionSwitcher } from "../collections/switcher";
+import { PageAppliedFiltersList } from "../list/applied-filters/root";
+import { PageFiltersSelection } from "../list/filters/root";
 import { PageOrderByDropdown } from "../list/order-by";
 import { PageSearchInput } from "../list/search-input";
 import { PageTabNavigation } from "../list/tab-navigation";
+import { PagesViewToggle } from "../view-toggle";
 
 type Props = {
   pageType: TPageNavigationTabs;
   projectId: string;
-  storeType: EPageStoreType;
+  storeType: EPageStoreType.PROJECT;
   workspaceSlug: string;
 };
 
@@ -40,6 +43,7 @@ export const PagesListHeaderRoot = observer(function PagesListHeaderRoot(props: 
   const {
     workspace: { workspaceMemberIds },
   } = useMember();
+  const { viewMode, setViewMode, activeCollectionId, setActiveCollectionId } = useProjectPagesView();
 
   const handleRemoveFilter = useCallback(
     (key: keyof TPageFilterProps, value: string | null) => {
@@ -63,6 +67,17 @@ export const PagesListHeaderRoot = observer(function PagesListHeaderRoot(props: 
       <Header variant={EHeaderVariant.SECONDARY}>
         <Header.LeftItem>
           <PageTabNavigation workspaceSlug={workspaceSlug} projectId={projectId} pageType={pageType} />
+          {pageType !== "archived" && (
+            <div className="flex items-center gap-2 pl-2">
+              <PageCollectionSwitcher
+                workspaceSlug={workspaceSlug}
+                projectId={projectId}
+                activeCollectionId={activeCollectionId}
+                onChange={setActiveCollectionId}
+              />
+              <PagesViewToggle viewMode={viewMode} onChange={setViewMode} />
+            </div>
+          )}
         </Header.LeftItem>
         <Header.RightItem className="items-center">
           <PageSearchInput

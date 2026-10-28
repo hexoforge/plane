@@ -24,7 +24,7 @@ import { EPageStoreType, usePageStore } from "@/hooks/store";
 type Props = {
   children: React.ReactNode;
   pageType: TPageNavigationTabs;
-  storeType: EPageStoreType;
+  storeType: EPageStoreType.PROJECT;
 };
 
 export const PagesListMainContent = observer(function PagesListMainContent(props: Props) {
@@ -59,6 +59,7 @@ export const PagesListMainContent = observer(function PagesListMainContent(props
     };
 
     await createPage(payload)
+      // oxlint-disable-next-line promise/always-return
       .then((res) => {
         const pageId = `/${workspaceSlug}/projects/${currentProjectDetails?.id}/pages/${res?.id}`;
         router.push(pageId);
