@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # See the LICENSE file for details.
 
+from rest_framework import serializers
+
 from .base import DynamicBaseSerializer
 from .state import StateLiteSerializer
 from plane.db.models import (
@@ -57,12 +59,15 @@ class GithubProjectStateMappingSerializer(DynamicBaseSerializer):
 
 
 class GithubPullRequestLinkSerializer(DynamicBaseSerializer):
+    repository_full_name = serializers.CharField(source="linked_repo.full_name", read_only=True)
+
     class Meta:
         model = GithubPullRequestLink
         fields = [
             "id",
             "issue_id",
             "linked_repo_id",
+            "repository_full_name",
             "pr_number",
             "pr_id",
             "title",
@@ -74,20 +79,23 @@ class GithubPullRequestLinkSerializer(DynamicBaseSerializer):
             "merged_at",
             "gh_updated_at",
         ]
-        read_only_fields = fields
+        read_only_fields = [f for f in fields if f != "repository_full_name"]
 
 
 class GithubIssueLinkSerializer(DynamicBaseSerializer):
+    repository_full_name = serializers.CharField(source="linked_repo.full_name", read_only=True)
+
     class Meta:
         model = GithubIssueLink
         fields = [
             "id",
             "issue_id",
             "linked_repo_id",
+            "repository_full_name",
             "gh_issue_id",
             "gh_issue_number",
             "url",
             "gh_state",
             "gh_updated_at",
         ]
-        read_only_fields = fields
+        read_only_fields = [f for f in fields if f != "repository_full_name"]
