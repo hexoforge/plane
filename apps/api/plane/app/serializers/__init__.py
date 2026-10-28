@@ -142,6 +142,7 @@ from .draft import (
 )
 
 from .github_app import (
+    GithubBackfillRunSerializer,
     GithubLinkedRepositorySerializer,
     GithubProjectStateMappingSerializer,
     GithubPullRequestLinkSerializer,

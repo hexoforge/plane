@@ -151,6 +151,52 @@ class TestGithubAppClientRetries:
 
 
 @pytest.mark.unit
+class TestGithubAppClientPagination:
+    """_auth_headers is stubbed out so these exercise only the pagination/retry
+    logic, not the separate installation-token fetch (covered above)."""
+
+    def test_list_repo_issues_follows_pagination_links(self):
+        client = GithubAppClient(installation_id=1)
+        page1 = _response(200, [{"number": 1}])
+        page1.links = {"next": {"url": "https://api.github.com/repos/acme/widgets/issues?page=2"}}
+        page2 = _response(200, [{"number": 2}])
+
+        with patch.object(client, "_auth_headers", return_value={}), patch(
+            "plane.utils.github_app.client.requests.request", side_effect=[page1, page2]
+        ) as mock_request:
+            issues = client.list_repo_issues("acme/widgets", state="open")
+
+        assert [issue["number"] for issue in issues] == [1, 2]
+        assert mock_request.call_count == 2
+
+    def test_list_repo_issues_retries_on_secondary_rate_limit_then_succeeds(self):
+        client = GithubAppClient(installation_id=1)
+        rate_limited = _response(403, headers={"Retry-After": "0"})
+        ok = _response(200, [{"number": 1}])
+
+        with patch.object(client, "_auth_headers", return_value={}), patch(
+            "plane.utils.github_app.client.requests.request", side_effect=[rate_limited, ok]
+        ) as mock_request, patch("plane.utils.github_app.client.time.sleep") as mock_sleep:
+            issues = client.list_repo_issues("acme/widgets")
+
+        assert issues == [{"number": 1}]
+        assert mock_request.call_count == 2
+        mock_sleep.assert_called_once_with(0.0)
+
+    def test_list_repo_issues_raises_after_exhausting_retries_on_primary_rate_limit(self):
+        client = GithubAppClient(installation_id=1)
+        exhausted = _response(403, headers={"X-RateLimit-Remaining": "0"})
+
+        with patch.object(client, "_auth_headers", return_value={}), patch(
+            "plane.utils.github_app.client.requests.request", return_value=exhausted
+        ) as mock_request, patch("plane.utils.github_app.client.time.sleep"):
+            with pytest.raises(GithubAppAPIError):
+                client.list_repo_issues("acme/widgets")
+
+        assert mock_request.call_count == 5
+
+
+@pytest.mark.unit
 class TestGithubAppClientRedaction:
     def test_error_message_never_contains_the_token_or_jwt(self):
         client = GithubAppClient(installation_id=1)

@@ -7,6 +7,7 @@ from django.urls import path
 from plane.app.views import (
     GithubIssueDetailEndpoint,
     GithubProjectRepositoriesEndpoint,
+    GithubProjectRepositoryBackfillEndpoint,
     GithubProjectStateMappingEndpoint,
     GithubSetupCallbackEndpoint,
     GithubWebhookEndpoint,
@@ -40,6 +41,11 @@ urlpatterns = [
         "workspaces/<str:slug>/projects/<uuid:project_id>/github/repositories/<uuid:pk>/",
         GithubProjectRepositoriesEndpoint.as_view(),
         name="project-github-repository",
+    ),
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/github/repositories/<uuid:pk>/backfill/",
+        GithubProjectRepositoryBackfillEndpoint.as_view(),
+        name="project-github-repository-backfill",
     ),
     path(
         "workspaces/<str:slug>/projects/<uuid:project_id>/github/state-mapping/",

@@ -7,8 +7,20 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from plane.app.permissions import ROLE, allow_permission
-from plane.app.serializers import GithubLinkedRepositorySerializer, GithubProjectStateMappingSerializer
-from plane.db.models import GithubAppInstallation, GithubLinkedRepository, GithubProjectStateMapping, Project, State
+from plane.app.serializers import (
+    GithubBackfillRunSerializer,
+    GithubLinkedRepositorySerializer,
+    GithubProjectStateMappingSerializer,
+)
+from plane.bgtasks.github_app.backfill import run_github_backfill
+from plane.db.models import (
+    GithubAppInstallation,
+    GithubBackfillRun,
+    GithubLinkedRepository,
+    GithubProjectStateMapping,
+    Project,
+    State,
+)
 
 from ..base import BaseAPIView
 from .base import require_github_app
@@ -54,6 +66,36 @@ class GithubProjectRepositoriesEndpoint(BaseAPIView):
         linked_repo = GithubLinkedRepository.objects.get(pk=pk, project_id=project_id, workspace__slug=slug)
         linked_repo.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class GithubProjectRepositoryBackfillEndpoint(BaseAPIView):
+    @allow_permission(allowed_roles=[ROLE.ADMIN], level="PROJECT")
+    def get(self, request, slug, project_id, pk):
+        linked_repo = GithubLinkedRepository.objects.get(pk=pk, project_id=project_id, workspace__slug=slug)
+        run = GithubBackfillRun.objects.filter(linked_repo=linked_repo).first()
+        if not run:
+            return Response(None, status=status.HTTP_200_OK)
+        return Response(GithubBackfillRunSerializer(run).data, status=status.HTTP_200_OK)
+
+    @allow_permission(allowed_roles=[ROLE.ADMIN], level="PROJECT")
+    @require_github_app
+    def post(self, request, slug, project_id, pk):
+        linked_repo = GithubLinkedRepository.objects.get(pk=pk, project_id=project_id, workspace__slug=slug)
+
+        try:
+            run = GithubBackfillRun.objects.create(
+                project=linked_repo.project,
+                linked_repo=linked_repo,
+                initiated_by=request.user,
+                include_closed_issues=bool(request.data.get("include_closed_issues", False)),
+            )
+        except IntegrityError:
+            return Response(
+                {"error": "A backfill is already running for this repository"}, status=status.HTTP_409_CONFLICT
+            )
+
+        run_github_backfill.delay(str(run.id))
+        return Response(GithubBackfillRunSerializer(run).data, status=status.HTTP_201_CREATED)
 
 
 class GithubProjectStateMappingEndpoint(BaseAPIView):

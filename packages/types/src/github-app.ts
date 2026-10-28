@@ -72,3 +72,22 @@ export type TWorkItemGithubLinks = {
   pull_requests: TGithubPullRequestLink[];
   issue_link: TGithubIssueLink | null;
 };
+
+export type TGithubBackfillStatus = "queued" | "running" | "completed" | "failed";
+
+export type TGithubBackfillRun = {
+  id: string;
+  project_id: string;
+  linked_repo_id: string;
+  status: TGithubBackfillStatus;
+  include_closed_issues: boolean;
+  started_at: string | null;
+  completed_at: string | null;
+  total_issues: number;
+  imported_issues: number;
+  skipped_issues: number;
+  total_pull_requests: number;
+  linked_pull_requests: number;
+  error: string;
+  created_at: string;
+};
