@@ -93,6 +93,7 @@ const PageTreeNodeRow = observer(function PageTreeNodeRow(props: TRowProps) {
         <button
           type="button"
           onClick={() => setIsExpanded((prev) => !prev)}
+          aria-label={isExpanded ? "Collapse sub-pages" : "Expand sub-pages"}
           className={cn(
             "grid size-5 shrink-0 place-items-center rounded-sm text-tertiary hover:bg-layer-transparent-hover",
             { invisible: !hasChildren }

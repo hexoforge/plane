@@ -30,6 +30,7 @@ export function PagesViewToggle(props: Props) {
         <Tooltip key={option.key} tooltipContent={option.label}>
           <button
             type="button"
+            aria-label={option.label}
             className={cn(
               "grid h-5.5 w-7 place-items-center rounded-sm transition-all hover:bg-layer-transparent-hover",
               { "bg-layer-transparent-active hover:bg-layer-transparent-active": viewMode === option.key }

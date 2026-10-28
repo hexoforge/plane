@@ -117,11 +117,22 @@ export const ManageCollectionsModal = observer(function ManageCollectionsModal(p
                         onChange={(e) => setEditingName(e.target.value)}
                         className="flex-1"
                         inputSize="xs"
+                        aria-label="Collection name"
                       />
-                      <button onClick={() => handleRename(collectionId)} className="text-secondary hover:text-primary">
+                      <button
+                        type="button"
+                        onClick={() => handleRename(collectionId)}
+                        className="text-secondary hover:text-primary"
+                        aria-label="Save name"
+                      >
                         <Check className="size-4" />
                       </button>
-                      <button onClick={() => setEditingId(null)} className="text-secondary hover:text-primary">
+                      <button
+                        type="button"
+                        onClick={() => setEditingId(null)}
+                        className="text-secondary hover:text-primary"
+                        aria-label="Cancel rename"
+                      >
                         <X className="size-4" />
                       </button>
                     </>
@@ -129,6 +140,7 @@ export const ManageCollectionsModal = observer(function ManageCollectionsModal(p
                     <>
                       <span className="text-sm flex-1 truncate text-primary">{collection.name}</span>
                       <button
+                        type="button"
                         onClick={() => startRename(collectionId, collection.name)}
                         className="text-secondary hover:text-primary"
                         aria-label={`Rename ${collection.name}`}
@@ -137,6 +149,7 @@ export const ManageCollectionsModal = observer(function ManageCollectionsModal(p
                       </button>
                       {!collection.is_default && (
                         <button
+                          type="button"
                           onClick={() => setDeletingId(collectionId)}
                           className="hover:text-danger-text text-secondary"
                           aria-label={`Delete ${collection.name}`}
@@ -155,6 +168,7 @@ export const ManageCollectionsModal = observer(function ManageCollectionsModal(p
               value={newCollectionName}
               onChange={(e) => setNewCollectionName(e.target.value)}
               placeholder="New collection name"
+              aria-label="New collection name"
               className="flex-1"
               inputSize="sm"
               onKeyDown={(e) => {
