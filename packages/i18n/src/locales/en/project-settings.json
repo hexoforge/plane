@@ -197,6 +197,55 @@
         "duration": "Send reminder before"
       }
     },
+    "github": {
+      "label": "GitHub",
+      "heading": "GitHub",
+      "description": "Link repositories and configure how GitHub pull requests and issues sync with this project's work items.",
+      "not_configured": {
+        "title": "GitHub is not connected",
+        "description": "Connect GitHub for this workspace in workspace settings to link repositories."
+      },
+      "repositories": {
+        "title": "Linked repositories",
+        "add": "Add repository",
+        "private": "Private",
+        "already_linked": "Linked to another project",
+        "empty": {
+          "title": "No repositories linked",
+          "description": "Link a repository from your GitHub App installation to start syncing."
+        },
+        "remove_modal": {
+          "title": "Remove repository",
+          "content": "This will stop syncing pull requests, issues, and comments for this repository. This action cannot be undone."
+        },
+        "toasts": {
+          "added": { "title": "Repository linked", "message": "The repository has been linked to this project." },
+          "not_added": { "title": "Link failed", "message": "The repository could not be linked." },
+          "removed": {
+            "title": "Repository removed",
+            "message": "The repository has been unlinked from this project."
+          },
+          "not_removed": { "title": "Remove failed", "message": "The repository could not be removed." }
+        }
+      },
+      "state_mapping": {
+        "title": "State mapping",
+        "description": "Choose which work item state to apply when GitHub activity happens.",
+        "pr_opened_state": "Pull request opened",
+        "pr_merged_state": "Pull request merged",
+        "issue_closed_state": "GitHub issue closed",
+        "issue_reopened_state": "GitHub issue reopened",
+        "auto_create_issues": "Create work items from GitHub issues",
+        "auto_create_issues_description": "Automatically create a work item when an issue is opened in a linked repository.",
+        "sync_comments": "Sync comments",
+        "sync_comments_description": "Keep comments in sync between Plane and GitHub.",
+        "save": "Save changes",
+        "toasts": {
+          "saved": { "title": "Saved", "message": "GitHub settings have been updated." },
+          "not_saved": { "title": "Save failed", "message": "GitHub settings could not be updated." }
+        }
+      }
+    },
     "empty_state": {
       "labels": {
         "title": "No labels yet",
