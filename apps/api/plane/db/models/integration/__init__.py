@@ -9,4 +9,13 @@ from .github import (
     GithubIssueSync,
     GithubCommentSync,
 )
+from .github_app import (
+    GithubAppInstallation,
+    GithubLinkedRepository,
+    GithubProjectStateMapping,
+    GithubPullRequestLink,
+    GithubIssueLink,
+    GithubCommentLink,
+    GithubWebhookDelivery,
+)
 from .slack import SlackProjectSync

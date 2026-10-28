@@ -248,3 +248,16 @@ from .notification.base import MarkAllReadNotificationViewSet
 from .user.base import AccountEndpoint, ProfileEndpoint, UserSessionEndpoint
 
 from .timezone.base import TimezoneEndpoint
+
+from .github_app.webhook import GithubWebhookEndpoint
+from .github_app.setup import GithubSetupCallbackEndpoint
+from .github_app.workspace import (
+    GithubWorkspaceIntegrationEndpoint,
+    GithubWorkspaceInstallationEndpoint,
+    GithubWorkspaceRepositoriesEndpoint,
+)
+from .github_app.project import (
+    GithubProjectRepositoriesEndpoint,
+    GithubProjectStateMappingEndpoint,
+)
+from .github_app.issue import GithubIssueDetailEndpoint
