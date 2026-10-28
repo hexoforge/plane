@@ -60,6 +60,7 @@ function GithubIntegrationSettingsPage({ params }: Route.ComponentProps) {
     if (!installationId || hasHandledInstallationReturn.current || !isWorkspaceAdmin) return;
     hasHandledInstallationReturn.current = true;
 
+    let active = true;
     (async () => {
       setIsConnecting(true);
       try {
@@ -77,10 +78,15 @@ function GithubIntegrationSettingsPage({ params }: Route.ComponentProps) {
           message: t("workspace_settings.settings.github_integration.toasts.not_connected.message"),
         });
       } finally {
-        setIsConnecting(false);
-        router.replace(pathname);
+        if (active) {
+          setIsConnecting(false);
+          router.replace(pathname);
+        }
       }
     })();
+    return () => {
+      active = false;
+    };
   }, [searchParams, workspaceSlug, isWorkspaceAdmin, pathname, router, t]);
 
   if (workspaceUserInfo && !isWorkspaceAdmin) {
