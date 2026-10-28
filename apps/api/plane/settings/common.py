@@ -289,6 +289,8 @@ USE_I18N = True
 # Timezones
 USE_TZ = True
 TIME_ZONE = "UTC"
+# Default timezone for new workspaces, projects, cycles and users
+DEFAULT_TIMEZONE = os.environ.get("DEFAULT_TIMEZONE", "Asia/Kolkata")
 
 # Default Auto Field
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
