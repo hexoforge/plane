@@ -137,6 +137,18 @@ export const GITHUB_REPOSITORY_INFO = (workspaceSlug: string, repoName: string) 
 export const SLACK_CHANNEL_INFO = (workspaceSlug: string, projectId: string) =>
   `SLACK_CHANNEL_INFO_${workspaceSlug.toString().toUpperCase()}_${projectId.toUpperCase()}`;
 
+// github-app-integration
+export const GITHUB_APP_WORKSPACE_INTEGRATION = (workspaceSlug: string) =>
+  `GITHUB_APP_WORKSPACE_INTEGRATION_${workspaceSlug.toUpperCase()}`;
+export const GITHUB_APP_AVAILABLE_REPOSITORIES = (workspaceSlug: string) =>
+  `GITHUB_APP_AVAILABLE_REPOSITORIES_${workspaceSlug.toUpperCase()}`;
+export const GITHUB_APP_PROJECT_REPOSITORIES = (workspaceSlug: string, projectId: string) =>
+  `GITHUB_APP_PROJECT_REPOSITORIES_${workspaceSlug.toUpperCase()}_${projectId.toUpperCase()}`;
+export const GITHUB_APP_PROJECT_STATE_MAPPING = (workspaceSlug: string, projectId: string) =>
+  `GITHUB_APP_PROJECT_STATE_MAPPING_${workspaceSlug.toUpperCase()}_${projectId.toUpperCase()}`;
+export const GITHUB_APP_WORK_ITEM_LINKS = (workspaceSlug: string, projectId: string, issueId: string) =>
+  `GITHUB_APP_WORK_ITEM_LINKS_${workspaceSlug.toUpperCase()}_${projectId.toUpperCase()}_${issueId.toUpperCase()}`;
+
 // profile
 export const USER_PROFILE_DATA = (workspaceSlug: string, userId: string) =>
   `USER_PROFILE_ACTIVITY_${workspaceSlug.toUpperCase()}_${userId.toUpperCase()}`;

@@ -150,6 +150,42 @@
           }
         }
       },
+      "github_integration": {
+        "title": "GitHub",
+        "heading": "GitHub",
+        "description": "Connect a GitHub App installation to sync pull requests, issues, and comments with your work items.",
+        "install": "Install GitHub App",
+        "connected_as": "Connected as",
+        "connected_on": "Connected on {date}",
+        "suspended": "Installation suspended",
+        "disconnect": "Disconnect",
+        "not_configured": {
+          "title": "GitHub integration is not configured",
+          "description": "Ask a Plane administrator to configure the GitHub App credentials for this instance."
+        },
+        "disconnect_modal": {
+          "title": "Disconnect GitHub",
+          "content": "This will unlink all repositories and stop syncing pull requests, issues, and comments for every project in this workspace. This action cannot be undone."
+        },
+        "toasts": {
+          "connected": {
+            "title": "GitHub connected",
+            "message": "The GitHub App installation was connected successfully."
+          },
+          "not_connected": {
+            "title": "Connection failed",
+            "message": "The GitHub App installation could not be connected."
+          },
+          "disconnected": {
+            "title": "GitHub disconnected",
+            "message": "The GitHub App installation was disconnected."
+          },
+          "not_disconnected": {
+            "title": "Disconnect failed",
+            "message": "The GitHub App installation could not be disconnected."
+          }
+        }
+      },
       "api_tokens": {
         "heading": "Access Tokens",
         "description": "Generate secure API tokens to integrate your data with external systems and applications.",
