@@ -13,7 +13,7 @@ import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
 import { EmptyStateCompact } from "@plane/propel/empty-state";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
-import type { TGithubLinkedRepository } from "@plane/types";
+import type { TGithubAvailableRepository, TGithubLinkedRepository } from "@plane/types";
 import { AlertModalCore, CustomMenu } from "@plane/ui";
 // services
 import { GithubAppIntegrationService } from "@/services/github-integration.service";
@@ -46,10 +46,10 @@ export function GithubProjectRepositoriesSection(props: Props) {
   const linkedRepoIds = new Set((linkedRepositories ?? []).map((repo) => repo.repo_id));
   const addableRepositories = (availableRepositories ?? []).filter((repo) => !linkedRepoIds.has(repo.id));
 
-  const handleAdd = async (repoId: number) => {
+  const handleAdd = async (repository: TGithubAvailableRepository) => {
     setIsAdding(true);
     try {
-      await githubAppIntegrationService.addProjectRepository(workspaceSlug, projectId, repoId);
+      await githubAppIntegrationService.addProjectRepository(workspaceSlug, projectId, repository);
       await mutate(linkedRepositoriesKey);
       setToast({
         type: TOAST_TYPE.SUCCESS,
@@ -111,7 +111,7 @@ export function GithubProjectRepositoriesSection(props: Props) {
                 key={repo.id}
                 disabled={!!repo.linked_project_id}
                 className="flex items-center justify-between gap-2"
-                onClick={() => handleAdd(repo.id)}
+                onClick={() => handleAdd(repo)}
               >
                 <span className="truncate">{repo.full_name}</span>
                 {repo.linked_project_id && (

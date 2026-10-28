@@ -64,10 +64,14 @@ export class GithubAppIntegrationService extends APIService {
   async addProjectRepository(
     workspaceSlug: string,
     projectId: string,
-    repoId: number
+    repository: TGithubAvailableRepository
   ): Promise<TGithubLinkedRepository> {
     return this.post(`/api/workspaces/${workspaceSlug}/projects/${projectId}/github/repositories/`, {
-      repo_id: repoId,
+      repo_id: repository.id,
+      full_name: repository.full_name,
+      private: repository.private,
+      default_branch: repository.default_branch,
+      html_url: repository.html_url,
     })
       .then((response) => response?.data)
       .catch((error) => {
