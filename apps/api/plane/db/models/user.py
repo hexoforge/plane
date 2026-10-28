@@ -11,6 +11,7 @@ import pytz
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
 
 # Django imports
+from django.conf import settings
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -117,7 +118,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     # timezone
     USER_TIMEZONE_CHOICES = tuple(zip(pytz.common_timezones, pytz.common_timezones))
-    user_timezone = models.CharField(max_length=255, default="UTC", choices=USER_TIMEZONE_CHOICES)
+    user_timezone = models.CharField(max_length=255, default=settings.DEFAULT_TIMEZONE, choices=USER_TIMEZONE_CHOICES)
 
     # email validation
     is_email_valid = models.BooleanField(default=False)
