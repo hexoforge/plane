@@ -579,7 +579,7 @@ if ENABLE_DRF_SPECTACULAR:
     INSTALLED_APPS.append("drf_spectacular")
     from .openapi import SPECTACULAR_SETTINGS  # noqa: F401
 
-# GitHub App integration — feature is disabled (API returns 400) unless all of these are set.
+# GitHub App integration: feature is disabled (API returns 400) unless all of these are set.
 # GITHUB_APP_PRIVATE_KEY may contain literal "\n" sequences (common when set via a single-line
 # env var); callers must replace them with real newlines before passing the key to PyJWT.
 GITHUB_APP_ID = os.environ.get("GITHUB_APP_ID", "")
