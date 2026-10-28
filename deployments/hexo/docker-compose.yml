@@ -43,7 +43,9 @@ services:
     restart: unless-stopped
 
   live:
-    image: makeplane/plane-live:${APP_RELEASE}
+    build:
+      context: ../../
+      dockerfile: apps/live/Dockerfile.live
     restart: unless-stopped
     environment:
       API_BASE_URL: http://plane-api:8000
