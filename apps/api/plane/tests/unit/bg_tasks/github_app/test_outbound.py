@@ -72,7 +72,9 @@ def _make_issue_link(project, linked_repo, issue, gh_state="open"):
 
 
 def _github_bot_user(workspace):
-    return UserFactory(username="github-bot-acme", is_bot=True)
+    # Mirror the real get_or_create_bot_user: the loop guard keys off bot_type,
+    # not the username (which uses an underscore, not the "github-bot-" email prefix).
+    return UserFactory(username=f"github_bot_{workspace.id}", is_bot=True, bot_type="GITHUB")
 
 
 @pytest.mark.django_db

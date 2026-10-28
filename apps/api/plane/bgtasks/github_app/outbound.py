@@ -2,9 +2,6 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # See the LICENSE file for details.
 
-# Python imports
-import hashlib
-
 # Third party imports
 from celery import shared_task
 
@@ -24,21 +21,17 @@ from plane.db.models import (
 from plane.utils.exception_logger import log_exception
 from plane.utils.github_app.client import GithubAppClient
 
-GITHUB_BOT_USERNAME_PREFIX = "github-bot-"
+from .sync import body_hash as _hash_body
+
+GITHUB_BOT_TYPE = "GITHUB"
 CLOSED_STATE_GROUPS = {StateGroup.COMPLETED, StateGroup.CANCELLED}
 STATE_REASON_BY_GROUP = {StateGroup.COMPLETED: "completed", StateGroup.CANCELLED: "not_planned"}
-
-
-def _hash_body(body):
-    return hashlib.sha256((body or "").encode("utf-8")).hexdigest()
 
 
 def _is_github_bot_actor(actor_id):
     if not actor_id:
         return False
-    return User.objects.filter(
-        id=actor_id, is_bot=True, username__startswith=GITHUB_BOT_USERNAME_PREFIX
-    ).exists()
+    return User.objects.filter(id=actor_id, is_bot=True, bot_type=GITHUB_BOT_TYPE).exists()
 
 
 @shared_task
