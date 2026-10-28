@@ -258,6 +258,7 @@ from .github_app.workspace import (
 )
 from .github_app.project import (
     GithubProjectRepositoriesEndpoint,
+    GithubProjectRepositoryBackfillEndpoint,
     GithubProjectStateMappingEndpoint,
 )
 from .github_app.issue import GithubIssueDetailEndpoint

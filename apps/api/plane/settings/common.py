@@ -358,6 +358,7 @@ CELERY_IMPORTS = (
     # github app integration
     "plane.bgtasks.github_app.process_delivery",
     "plane.bgtasks.github_app.outbound",
+    "plane.bgtasks.github_app.backfill",
 )
 
 FILE_SIZE_LIMIT = int(os.environ.get("FILE_SIZE_LIMIT", 5242880))

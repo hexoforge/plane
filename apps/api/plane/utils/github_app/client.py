@@ -178,6 +178,32 @@ class GithubAppClient:
             params = None
         return repos
 
+    def _paginate(self, url, params=None):
+        items = []
+        params = dict(params or {})
+        params.setdefault("per_page", 100)
+        while url:
+            response = self._request("GET", url, headers=self._auth_headers(), params=params)
+            self._raise_for_status(response)
+            items.extend(response.json())
+            url = response.links.get("next", {}).get("url")
+            params = None
+        return items
+
+    def list_repo_issues(self, repo_full_name, state="open"):
+        """Includes pull requests - GitHub's issues endpoint returns both; callers
+        filter out entries with a "pull_request" key."""
+        url = f"{GITHUB_API_BASE_URL}/repos/{repo_full_name}/issues"
+        return self._paginate(url, {"state": state})
+
+    def list_repo_pulls(self, repo_full_name, state="all"):
+        url = f"{GITHUB_API_BASE_URL}/repos/{repo_full_name}/pulls"
+        return self._paginate(url, {"state": state})
+
+    def list_issue_comments(self, repo_full_name, number):
+        url = f"{GITHUB_API_BASE_URL}/repos/{repo_full_name}/issues/{number}/comments"
+        return self._paginate(url)
+
     def get_issue(self, repo_full_name, number):
         url = f"{GITHUB_API_BASE_URL}/repos/{repo_full_name}/issues/{number}"
         response = self._request("GET", url, headers=self._auth_headers())

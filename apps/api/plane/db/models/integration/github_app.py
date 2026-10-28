@@ -208,6 +208,48 @@ class GithubCommentLink(BaseModel):
         ordering = ("-created_at",)
 
 
+class GithubBackfillRun(ProjectBaseModel):
+    STATUS_CHOICES = (
+        ("queued", "Queued"),
+        ("running", "Running"),
+        ("completed", "Completed"),
+        ("failed", "Failed"),
+    )
+
+    linked_repo = models.ForeignKey(
+        "db.GithubLinkedRepository", on_delete=models.CASCADE, related_name="backfill_runs"
+    )
+    initiated_by = models.ForeignKey(
+        "db.User", on_delete=models.SET_NULL, null=True, related_name="github_backfill_runs"
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="queued")
+    include_closed_issues = models.BooleanField(default=False)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    total_issues = models.PositiveIntegerField(default=0)
+    imported_issues = models.PositiveIntegerField(default=0)
+    skipped_issues = models.PositiveIntegerField(default=0)
+    total_pull_requests = models.PositiveIntegerField(default=0)
+    linked_pull_requests = models.PositiveIntegerField(default=0)
+    error = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"Backfill <{self.linked_repo.full_name}> {self.status}"
+
+    class Meta:
+        verbose_name = "Github Backfill Run"
+        verbose_name_plural = "Github Backfill Runs"
+        db_table = "github_backfill_runs"
+        ordering = ("-created_at",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=["linked_repo"],
+                condition=Q(status__in=["queued", "running"], deleted_at__isnull=True),
+                name="github_backfill_run_unique_active_per_repo",
+            )
+        ]
+
+
 class GithubWebhookDelivery(BaseModel):
     STATUS_CHOICES = (
         ("received", "Received"),

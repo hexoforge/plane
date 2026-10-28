@@ -7,6 +7,7 @@ from rest_framework import serializers
 from .base import DynamicBaseSerializer
 from .state import StateLiteSerializer
 from plane.db.models import (
+    GithubBackfillRun,
     GithubIssueLink,
     GithubLinkedRepository,
     GithubProjectStateMapping,
@@ -80,6 +81,28 @@ class GithubPullRequestLinkSerializer(DynamicBaseSerializer):
             "gh_updated_at",
         ]
         read_only_fields = [f for f in fields if f != "repository_full_name"]
+
+
+class GithubBackfillRunSerializer(DynamicBaseSerializer):
+    class Meta:
+        model = GithubBackfillRun
+        fields = [
+            "id",
+            "project_id",
+            "linked_repo_id",
+            "status",
+            "include_closed_issues",
+            "started_at",
+            "completed_at",
+            "total_issues",
+            "imported_issues",
+            "skipped_issues",
+            "total_pull_requests",
+            "linked_pull_requests",
+            "error",
+            "created_at",
+        ]
+        read_only_fields = [f for f in fields if f not in ("include_closed_issues",)]
 
 
 class GithubIssueLinkSerializer(DynamicBaseSerializer):
