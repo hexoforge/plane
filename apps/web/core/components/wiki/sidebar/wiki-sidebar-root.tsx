@@ -60,7 +60,12 @@ export const WikiSidebarRoot = observer(function WikiSidebarRoot(props: Props) {
       <div className="flex items-center gap-2 border-b border-subtle px-3 py-3">
         <WikiSidebarSearch value={searchQuery} onChange={setSearchQuery} />
         {canCurrentUserCreatePage && (
-          <Button variant="secondary" size="sm" onClick={() => setIsCreateCollectionOpen(true)}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setIsCreateCollectionOpen(true)}
+            aria-label="Create collection"
+          >
             <Plus className="size-3.5" />
           </Button>
         )}
