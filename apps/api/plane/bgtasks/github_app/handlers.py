@@ -31,6 +31,61 @@ from .sync import (
 )
 
 
+def apply_pull_request_link(
+    issue, project, linked_repo, pr, new_state, action, is_draft, updated_at, bot_user, state_mapping
+):
+    """Create or update a GithubPullRequestLink for one (issue, PR) pair and move
+    the issue's state per the opened/merged mapping. Shared by the webhook handler
+    and the backfill task so both honor the same never-move-backward-out-of-merged
+    rule."""
+    link = GithubPullRequestLink.objects.filter(issue=issue, pr_id=pr.get("id")).first()
+    if link and is_stale(link.gh_updated_at, updated_at):
+        return
+
+    is_new = link is None
+    previous_state = link.state if link else None
+    # Never move a PR link backwards out of "merged".
+    effective_state = "merged" if previous_state == "merged" else new_state
+
+    if not link:
+        link = GithubPullRequestLink(
+            project=project,
+            issue=issue,
+            linked_repo=linked_repo,
+            pr_id=pr.get("id"),
+        )
+
+    link.pr_number = pr.get("number")
+    link.title = pr.get("title") or ""
+    link.url = pr.get("html_url") or ""
+    link.author_login = (pr.get("user") or {}).get("login", "")
+    link.author_avatar_url = (pr.get("user") or {}).get("avatar_url")
+    link.head_branch = (pr.get("head") or {}).get("ref", "")
+    link.state = effective_state
+    link.merged_at = parse_gh_datetime(pr.get("merged_at"))
+    link.gh_updated_at = updated_at
+    link.save()
+
+    if is_new:
+        record_github_activity(
+            issue, bot_user, "created", f"linked pull request {linked_repo.full_name}#{link.pr_number}"
+        )
+    elif effective_state == "merged" and previous_state != "merged":
+        record_github_activity(
+            issue, bot_user, "updated", f"merged pull request {linked_repo.full_name}#{link.pr_number}"
+        )
+
+    if effective_state == "merged" and previous_state != "merged" and state_mapping:
+        move_issue_state(issue, state_mapping.pr_merged_state, bot_user)
+    elif (
+        action in ("opened", "reopened", "ready_for_review")
+        and not is_draft
+        and previous_state != "merged"
+        and state_mapping
+    ):
+        move_issue_state(issue, state_mapping.pr_opened_state, bot_user)
+
+
 def handle_pull_request(payload):
     action = payload.get("action")
     pr = payload.get("pull_request") or {}
@@ -64,53 +119,9 @@ def handle_pull_request(payload):
         issue = Issue.objects.filter(project=project, sequence_id=sequence_id).first()
         if not issue:
             continue
-
-        link = GithubPullRequestLink.objects.filter(issue=issue, pr_id=pr.get("id")).first()
-        if link and is_stale(link.gh_updated_at, updated_at):
-            continue
-
-        is_new = link is None
-        previous_state = link.state if link else None
-        # Never move a PR link backwards out of "merged".
-        effective_state = "merged" if previous_state == "merged" else new_state
-
-        if not link:
-            link = GithubPullRequestLink(
-                project=project,
-                issue=issue,
-                linked_repo=linked_repo,
-                pr_id=pr.get("id"),
-            )
-
-        link.pr_number = pr.get("number")
-        link.title = pr.get("title") or ""
-        link.url = pr.get("html_url") or ""
-        link.author_login = (pr.get("user") or {}).get("login", "")
-        link.author_avatar_url = (pr.get("user") or {}).get("avatar_url")
-        link.head_branch = (pr.get("head") or {}).get("ref", "")
-        link.state = effective_state
-        link.merged_at = parse_gh_datetime(pr.get("merged_at"))
-        link.gh_updated_at = updated_at
-        link.save()
-
-        if is_new:
-            record_github_activity(
-                issue, bot_user, "created", f"linked pull request {linked_repo.full_name}#{link.pr_number}"
-            )
-        elif effective_state == "merged" and previous_state != "merged":
-            record_github_activity(
-                issue, bot_user, "updated", f"merged pull request {linked_repo.full_name}#{link.pr_number}"
-            )
-
-        if effective_state == "merged" and previous_state != "merged" and state_mapping:
-            move_issue_state(issue, state_mapping.pr_merged_state, bot_user)
-        elif (
-            action in ("opened", "reopened", "ready_for_review")
-            and not is_draft
-            and previous_state != "merged"
-            and state_mapping
-        ):
-            move_issue_state(issue, state_mapping.pr_opened_state, bot_user)
+        apply_pull_request_link(
+            issue, project, linked_repo, pr, new_state, action, is_draft, updated_at, bot_user, state_mapping
+        )
 
     return "processed"
 

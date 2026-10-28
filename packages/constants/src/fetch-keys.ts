@@ -148,6 +148,8 @@ export const GITHUB_APP_PROJECT_STATE_MAPPING = (workspaceSlug: string, projectI
   `GITHUB_APP_PROJECT_STATE_MAPPING_${workspaceSlug.toUpperCase()}_${projectId.toUpperCase()}`;
 export const GITHUB_APP_WORK_ITEM_LINKS = (workspaceSlug: string, projectId: string, issueId: string) =>
   `GITHUB_APP_WORK_ITEM_LINKS_${workspaceSlug.toUpperCase()}_${projectId.toUpperCase()}_${issueId.toUpperCase()}`;
+export const GITHUB_APP_REPOSITORY_BACKFILL = (workspaceSlug: string, projectId: string, linkedRepositoryId: string) =>
+  `GITHUB_APP_REPOSITORY_BACKFILL_${workspaceSlug.toUpperCase()}_${projectId.toUpperCase()}_${linkedRepositoryId.toUpperCase()}`;
 
 // profile
 export const USER_PROFILE_DATA = (workspaceSlug: string, userId: string) =>

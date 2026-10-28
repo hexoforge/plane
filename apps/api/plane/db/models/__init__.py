@@ -21,6 +21,7 @@ from .importer import Importer
 from .intake import Intake, IntakeIssue
 from .integration import (
     GithubAppInstallation,
+    GithubBackfillRun,
     GithubCommentLink,
     GithubCommentSync,
     GithubIssueLink,
@@ -34,13 +35,6 @@ from .integration import (
     Integration,
     SlackProjectSync,
     WorkspaceIntegration,
-    GithubAppInstallation,
-    GithubLinkedRepository,
-    GithubProjectStateMapping,
-    GithubPullRequestLink,
-    GithubIssueLink,
-    GithubCommentLink,
-    GithubWebhookDelivery,
 )
 from .issue import (
     CommentReaction,

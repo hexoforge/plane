@@ -17,6 +17,8 @@ import type { TGithubAvailableRepository, TGithubLinkedRepository } from "@plane
 import { AlertModalCore, CustomMenu } from "@plane/ui";
 // services
 import { GithubAppIntegrationService } from "@/services/github-integration.service";
+// local imports
+import { GithubImportExistingModal } from "./import-existing-modal";
 
 const githubAppIntegrationService = new GithubAppIntegrationService();
 
@@ -32,6 +34,7 @@ export function GithubProjectRepositoriesSection(props: Props) {
   const [isAdding, setIsAdding] = useState(false);
   const [repositoryPendingRemoval, setRepositoryPendingRemoval] = useState<TGithubLinkedRepository | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [repositoryForBackfill, setRepositoryForBackfill] = useState<TGithubLinkedRepository | null>(null);
   // translation
   const { t } = useTranslation();
   // fetch
@@ -147,6 +150,11 @@ export function GithubProjectRepositoriesSection(props: Props) {
                 )}
               </div>
               <div className="flex flex-shrink-0 items-center gap-1">
+                {!disabled && (
+                  <Button variant="secondary" size="sm" onClick={() => setRepositoryForBackfill(repo)}>
+                    {t("project_settings.github.repositories.backfill.button")}
+                  </Button>
+                )}
                 <a
                   href={repo.html_url}
                   target="_blank"
@@ -187,6 +195,16 @@ export function GithubProjectRepositoriesSection(props: Props) {
         title={t("project_settings.github.repositories.remove_modal.title")}
         content={t("project_settings.github.repositories.remove_modal.content")}
       />
+
+      {repositoryForBackfill && (
+        <GithubImportExistingModal
+          workspaceSlug={workspaceSlug}
+          projectId={projectId}
+          repository={repositoryForBackfill}
+          isOpen={!!repositoryForBackfill}
+          handleClose={() => setRepositoryForBackfill(null)}
+        />
+      )}
     </div>
   );
 }

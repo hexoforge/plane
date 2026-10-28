@@ -226,6 +226,22 @@
             "message": "The repository has been unlinked from this project."
           },
           "not_removed": { "title": "Remove failed", "message": "The repository could not be removed." }
+        },
+        "backfill": {
+          "button": "Import existing",
+          "title": "Import existing issues and pull requests",
+          "description": "Import open issues from {repo} as work items, and link related pull requests.",
+          "include_closed_issues": "Include closed issues",
+          "start": "Start import",
+          "import_again": "Import again",
+          "in_progress": "Import in progress",
+          "completed": "Import completed",
+          "failed": "Import failed",
+          "issues_count": "{imported} of {total} issues imported",
+          "pull_requests_count": "{linked} of {total} pull requests linked",
+          "toasts": {
+            "not_started": { "title": "Import failed to start", "message": "The import could not be started." }
+          }
         }
       },
       "state_mapping": {

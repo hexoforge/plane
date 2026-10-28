@@ -7,6 +7,7 @@
 import { API_BASE_URL } from "@plane/constants";
 import type {
   TGithubAvailableRepository,
+  TGithubBackfillRun,
   TGithubIntegrationStatus,
   TGithubLinkedRepository,
   TGithubStateMapping,
@@ -106,6 +107,36 @@ export class GithubAppIntegrationService extends APIService {
       .then((response) => response?.data)
       .catch((error) => {
         throw error?.response?.data;
+      });
+  }
+
+  async getRepositoryBackfillStatus(
+    workspaceSlug: string,
+    projectId: string,
+    linkedRepositoryId: string
+  ): Promise<TGithubBackfillRun | null> {
+    return this.get(
+      `/api/workspaces/${workspaceSlug}/projects/${projectId}/github/repositories/${linkedRepositoryId}/backfill/`
+    )
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
+  async startRepositoryBackfill(
+    workspaceSlug: string,
+    projectId: string,
+    linkedRepositoryId: string,
+    includeClosedIssues: boolean
+  ): Promise<TGithubBackfillRun> {
+    return this.post(
+      `/api/workspaces/${workspaceSlug}/projects/${projectId}/github/repositories/${linkedRepositoryId}/backfill/`,
+      { include_closed_issues: includeClosedIssues }
+    )
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw { status: error?.response?.status, ...error?.response?.data };
       });
   }
 

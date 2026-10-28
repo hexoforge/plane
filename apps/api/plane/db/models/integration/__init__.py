@@ -11,6 +11,7 @@ from .github import (
 )
 from .github_app import (
     GithubAppInstallation,
+    GithubBackfillRun,
     GithubLinkedRepository,
     GithubProjectStateMapping,
     GithubPullRequestLink,
@@ -19,12 +20,3 @@ from .github_app import (
     GithubWebhookDelivery,
 )
 from .slack import SlackProjectSync
-from .github_app import (
-    GithubAppInstallation,
-    GithubLinkedRepository,
-    GithubProjectStateMapping,
-    GithubPullRequestLink,
-    GithubIssueLink,
-    GithubCommentLink,
-    GithubWebhookDelivery,
-)
