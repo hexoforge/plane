@@ -20,7 +20,7 @@ import type { EPageStoreType } from "@/hooks/store";
 import type { TPageInstance } from "@/store/pages/base-page";
 // local imports
 import { PageCollectionSelect } from "../collections/page-collection-select";
-import { PageActions } from "../dropdowns";
+import { PageActions } from "../dropdowns/actions";
 
 type Props = {
   page: TPageInstance;

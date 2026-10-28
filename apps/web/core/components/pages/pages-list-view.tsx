@@ -11,7 +11,7 @@ import type { TPageNavigationTabs } from "@plane/types";
 import type { EPageStoreType } from "@/hooks/store";
 import { usePageStore, useProjectPageCollections } from "@/hooks/store";
 // local imports
-import { PagesListHeaderRoot } from "./header";
+import { PagesListHeaderRoot } from "./header/root";
 import { PagesListMainContent } from "./pages-list-main-content";
 
 type TPageView = {

@@ -16,7 +16,7 @@ import { TrashIcon } from "@plane/propel/icons";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import { EFileAssetType } from "@plane/types";
 import { Avatar, Loader } from "@plane/ui";
-import { calculateTimeAgo, cn, isCommentEmpty } from "@plane/utils";
+import { calculateTimeAgo, isCommentEmpty } from "@plane/utils";
 // components
 import { LiteTextEditor } from "@/components/editor/lite-text/editor";
 import { SimpleEmptyState } from "@/components/empty-state/simple-empty-state-root";
@@ -110,10 +110,15 @@ export const WikiCommentsPanel = observer(function WikiCommentsPanel(props: Prop
                       aria-label="Delete comment"
                     />
                   </div>
-                  <div
-                    className={cn("prose-sm mt-1 max-w-none text-13 text-secondary prose")}
-                    // comment_html is sanitized server-side before storage
-                    dangerouslySetInnerHTML={{ __html: comment.comment_html }}
+                  <LiteTextEditor
+                    editable={false}
+                    id={comment.id}
+                    initialValue={comment.comment_html ?? ""}
+                    workspaceId={workspaceId}
+                    workspaceSlug={workspaceSlug}
+                    containerClassName="!py-1"
+                    displayConfig={{ fontSize: "small-font" }}
+                    parentClassName="border-none"
                   />
                 </div>
               </div>

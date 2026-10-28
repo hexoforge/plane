@@ -36,12 +36,13 @@ export const PagesTreeRoot = observer(function PagesTreeRoot(props: Props) {
   if (!filteredPageIds) return <></>;
 
   // collections may not have loaded yet (or none exist for this project), show every page rather than hiding all of them
-  const pagesInCollection = filteredPageIds
-    .map((pageId) => getPageById(pageId))
-    .filter((page): page is NonNullable<typeof page> => !!page)
-    .filter(
-      (page) => !collectionId || pageBelongsToCollection(page, collectionId, collectionId === defaultCollectionId)
-    );
+  const pagesInCollection = filteredPageIds.flatMap((pageId) => {
+    const page = getPageById(pageId);
+    if (!page) return [];
+    const isInCollection =
+      !collectionId || pageBelongsToCollection(page, collectionId, collectionId === defaultCollectionId);
+    return isInCollection ? [page] : [];
+  });
 
   const tree = buildPageTree(pagesInCollection);
 

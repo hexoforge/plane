@@ -21,8 +21,8 @@ import type { EPageStoreType } from "@/hooks/store";
 import { useProjectPagesView } from "@/hooks/use-project-pages-view";
 // local imports
 import { PageCollectionSwitcher } from "../collections/switcher";
-import { PageAppliedFiltersList } from "../list/applied-filters";
-import { PageFiltersSelection } from "../list/filters";
+import { PageAppliedFiltersList } from "../list/applied-filters/root";
+import { PageFiltersSelection } from "../list/filters/root";
 import { PageOrderByDropdown } from "../list/order-by";
 import { PageSearchInput } from "../list/search-input";
 import { PageTabNavigation } from "../list/tab-navigation";

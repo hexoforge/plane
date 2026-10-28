@@ -4,10 +4,11 @@
  * See the LICENSE file for details.
  */
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { observer } from "mobx-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Navigate } from "react-router";
 import useSWR from "swr";
 // plane imports
 import { getButtonStyling } from "@plane/propel/button";
@@ -115,11 +116,7 @@ function WikiPageDetailsPage({ params }: Route.ComponentProps) {
     [workspaceSlug]
   );
 
-  useEffect(() => {
-    if (page?.deleted_at && page?.id) {
-      router.push(pageRootHandlers.getRedirectionLink());
-    }
-  }, [page?.deleted_at, page?.id, router, pageRootHandlers]);
+  if (page?.deleted_at && page.id) return <Navigate to={pageRootHandlers.getRedirectionLink()} />;
 
   if ((!page || !id) && !pageDetailsError)
     return (

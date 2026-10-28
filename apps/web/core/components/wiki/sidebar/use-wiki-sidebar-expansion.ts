@@ -4,12 +4,13 @@
  * See the LICENSE file for details.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 // plane imports
 import type { TWikiTreeNode } from "@plane/types";
 
 export const useWikiSidebarExpansion = (searchQuery: string, treeNodes: TWikiTreeNode[]) => {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [syncedVisibleIds, setSyncedVisibleIds] = useState<Set<string> | null>(null);
 
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
@@ -37,9 +38,10 @@ export const useWikiSidebarExpansion = (searchQuery: string, treeNodes: TWikiTre
     return visible;
   }, [searchQuery, treeNodes]);
 
-  useEffect(() => {
+  if (visibleIds !== syncedVisibleIds) {
+    setSyncedVisibleIds(visibleIds);
     if (visibleIds) setExpandedIds(new Set(visibleIds));
-  }, [visibleIds]);
+  }
 
   return { expandedIds, toggleExpand, visibleIds };
 };

@@ -25,7 +25,7 @@ import { usePage, usePageStore } from "@/hooks/store";
 // store
 import type { TPageInstance } from "@/store/pages/base-page";
 // local imports
-import { PageActions } from "../dropdowns";
+import { PageActions } from "../dropdowns/actions";
 
 type Props = {
   node: TPageTreeNode;

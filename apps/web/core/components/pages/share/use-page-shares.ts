@@ -4,7 +4,7 @@
  * See the LICENSE file for details.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 // plane imports
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { TPageShare, TPageShareRole } from "@plane/types";
@@ -26,27 +26,52 @@ const showErrorToast = (error: unknown, fallback: string) => {
   });
 };
 
+type TState = { shares: TPageShare[] | undefined; ownerId: string | undefined };
+
+type TAction =
+  | { type: "loading" }
+  | { type: "loaded"; shares: TPageShare[]; ownerId: string | undefined }
+  | { type: "load-failed" }
+  | { type: "added"; share: TPageShare }
+  | { type: "updated"; share: TPageShare }
+  | { type: "removed"; shareId: string };
+
+const reducer = (state: TState, action: TAction): TState => {
+  switch (action.type) {
+    case "loading":
+      return { ...state, shares: undefined };
+    case "loaded":
+      return { shares: action.shares, ownerId: action.ownerId };
+    case "load-failed":
+      return { ...state, shares: [] };
+    case "added":
+      return { ...state, shares: [...(state.shares ?? []), action.share] };
+    case "updated":
+      return { ...state, shares: state.shares?.map((s) => (s.id === action.share.id ? action.share : s)) };
+    case "removed":
+      return { ...state, shares: state.shares?.filter((s) => s.id !== action.shareId) };
+  }
+};
+
 export const usePageShares = (params: Params) => {
   const { workspaceSlug, projectId, pageId, isOpen } = params;
-  const [shares, setShares] = useState<TPageShare[] | undefined>(undefined);
-  const [ownerId, setOwnerId] = useState<string | undefined>(undefined);
+  const [{ shares, ownerId }, dispatch] = useReducer(reducer, { shares: undefined, ownerId: undefined });
   const [pendingShareIds, setPendingShareIds] = useState<Set<string>>(new Set());
   const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
-    setShares(undefined);
+    dispatch({ type: "loading" });
     Promise.all([
       pageShareService.list(workspaceSlug, pageId, projectId),
       pageShareService.fetchPageOwner(workspaceSlug, pageId, projectId),
     ])
       .then(([sharesResponse, owner]) => {
-        setShares(sharesResponse);
-        setOwnerId(owner);
+        dispatch({ type: "loaded", shares: sharesResponse, ownerId: owner });
         return null;
       })
       .catch((error: { error?: string }) => {
-        setShares([]);
+        dispatch({ type: "load-failed" });
         showErrorToast(error, "Failed to load page shares. Please try again.");
       });
   }, [isOpen, workspaceSlug, pageId, projectId]);
@@ -64,7 +89,7 @@ export const usePageShares = (params: Params) => {
     setIsAdding(true);
     try {
       const share = await pageShareService.create(workspaceSlug, pageId, { user: userId, role }, projectId);
-      setShares((prev) => [...(prev ?? []), share]);
+      dispatch({ type: "added", share });
       setToast({ type: TOAST_TYPE.SUCCESS, title: "Success!", message: "Page shared successfully." });
       return true;
     } catch (error: unknown) {
@@ -79,7 +104,7 @@ export const usePageShares = (params: Params) => {
     markPending(share.id);
     try {
       const updated = await pageShareService.update(workspaceSlug, pageId, share.id, { role }, projectId);
-      setShares((prev) => prev?.map((s) => (s.id === share.id ? updated : s)));
+      dispatch({ type: "updated", share: updated });
     } catch (error: unknown) {
       showErrorToast(error, "Failed to update access. Please try again.");
     } finally {
@@ -91,7 +116,7 @@ export const usePageShares = (params: Params) => {
     markPending(share.id);
     try {
       await pageShareService.remove(workspaceSlug, pageId, share.id, projectId);
-      setShares((prev) => prev?.filter((s) => s.id !== share.id));
+      dispatch({ type: "removed", shareId: share.id });
       setToast({ type: TOAST_TYPE.SUCCESS, title: "Success!", message: "Access removed." });
     } catch (error: unknown) {
       showErrorToast(error, "Failed to remove access. Please try again.");

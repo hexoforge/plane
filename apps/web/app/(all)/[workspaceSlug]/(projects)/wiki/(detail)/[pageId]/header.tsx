@@ -4,15 +4,16 @@
  * See the LICENSE file for details.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { observer } from "mobx-react";
 import { useParams, useSearchParams } from "next/navigation";
-import { MessageSquare } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft, MessageSquare } from "lucide-react";
 // plane imports
-import { Button } from "@plane/propel/button";
+import { Button, getButtonStyling } from "@plane/propel/button";
 import { WikiIcon } from "@plane/propel/icons";
 import { Breadcrumbs, Header } from "@plane/ui";
-import { getPageName } from "@plane/utils";
+import { cn, getPageName } from "@plane/utils";
 // components
 import { BreadcrumbLink } from "@/components/common/breadcrumb-link";
 import { PageHeaderActions } from "@/components/pages/header/actions";
@@ -41,6 +42,22 @@ export const WikiPageDetailsHeader = observer(function WikiPageDetailsHeader() {
     router.push(updatedRoute);
   };
 
+  const wikiBreadcrumb = useMemo(
+    () => (
+      <BreadcrumbLink
+        label="Wiki"
+        href={`/${workspaceSlug}/wiki/`}
+        icon={<WikiIcon className="h-4 w-4 text-tertiary" />}
+      />
+    ),
+    [workspaceSlug]
+  );
+
+  const pageBreadcrumb = useMemo(
+    () => <BreadcrumbLink label={getPageName(page?.name)} href={`/${workspaceSlug}/wiki/${pageId}`} isLast />,
+    [page?.name, workspaceSlug, pageId]
+  );
+
   if (!page) return null;
 
   return (
@@ -54,22 +71,16 @@ export const WikiPageDetailsHeader = observer(function WikiPageDetailsHeader() {
         />
       )}
       <Header.LeftItem>
+        <Link
+          href={`/${workspaceSlug}/wiki`}
+          className={cn(getButtonStyling("ghost", "sm"), "md:hidden")}
+          aria-label="All wiki pages"
+        >
+          <ChevronLeft className="size-3.5" />
+        </Link>
         <Breadcrumbs>
-          <Breadcrumbs.Item
-            component={
-              <BreadcrumbLink
-                label="Wiki"
-                href={`/${workspaceSlug}/wiki/`}
-                icon={<WikiIcon className="h-4 w-4 text-tertiary" />}
-              />
-            }
-          />
-          <Breadcrumbs.Item
-            component={
-              <BreadcrumbLink label={getPageName(page.name)} href={`/${workspaceSlug}/wiki/${pageId}`} isLast />
-            }
-            isLast
-          />
+          <Breadcrumbs.Item component={wikiBreadcrumb} />
+          <Breadcrumbs.Item component={pageBreadcrumb} isLast />
         </Breadcrumbs>
       </Header.LeftItem>
       <Header.RightItem>

@@ -37,7 +37,7 @@ export const WikiSidebarRoot = observer(function WikiSidebarRoot(props: Props) {
   const { expandedIds, toggleExpand, visibleIds } = useWikiSidebarExpansion(searchQuery, treeNodes);
 
   return (
-    <div className="flex h-full w-64 flex-shrink-0 flex-col border-r border-subtle bg-surface-1">
+    <div className="flex h-full w-full flex-col border-r border-subtle bg-surface-1">
       <CreateWikiCollectionModal
         workspaceSlug={workspaceSlug}
         isOpen={isCreateCollectionOpen}
