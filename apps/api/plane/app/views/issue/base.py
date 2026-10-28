@@ -10,6 +10,7 @@ import json
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.postgres.fields import ArrayField
 from django.core.serializers.json import DjangoJSONEncoder
+from django.db import transaction
 from django.db.models import (
     Count,
     Exists,
@@ -40,6 +41,7 @@ from plane.app.serializers import (
     IssueSerializer,
     ProjectUserPropertySerializer,
 )
+from plane.bgtasks.github_app.outbound import sync_issue_state_to_github
 from plane.bgtasks.issue_activities_task import issue_activity
 from plane.bgtasks.issue_description_version_task import issue_description_version_task
 from plane.bgtasks.recent_visited_task import recent_visited_task
@@ -710,6 +712,10 @@ class IssueViewSet(BaseViewSet):
                     issue_id=str(serializer.data.get("id", None)),
                     user_id=request.user.id,
                 )
+                if "state_id" in request.data:
+                    transaction.on_commit(
+                        lambda: sync_issue_state_to_github.delay(issue_id=str(pk), actor_id=str(request.user.id))
+                    )
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

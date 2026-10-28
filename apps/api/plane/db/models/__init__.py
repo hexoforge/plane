@@ -27,6 +27,13 @@ from .integration import (
     Integration,
     SlackProjectSync,
     WorkspaceIntegration,
+    GithubAppInstallation,
+    GithubLinkedRepository,
+    GithubProjectStateMapping,
+    GithubPullRequestLink,
+    GithubIssueLink,
+    GithubCommentLink,
+    GithubWebhookDelivery,
 )
 from .issue import (
     CommentReaction,

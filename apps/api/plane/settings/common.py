@@ -573,3 +573,11 @@ if ENABLE_DRF_SPECTACULAR:
     REST_FRAMEWORK["DEFAULT_SCHEMA_CLASS"] = "drf_spectacular.openapi.AutoSchema"
     INSTALLED_APPS.append("drf_spectacular")
     from .openapi import SPECTACULAR_SETTINGS  # noqa: F401
+
+# GitHub App integration — feature is disabled (API returns 400) unless all of these are set.
+# GITHUB_APP_PRIVATE_KEY may contain literal "\n" sequences (common when set via a single-line
+# env var); callers must replace them with real newlines before passing the key to PyJWT.
+GITHUB_APP_ID = os.environ.get("GITHUB_APP_ID", "")
+GITHUB_APP_PRIVATE_KEY = os.environ.get("GITHUB_APP_PRIVATE_KEY", "")
+GITHUB_APP_WEBHOOK_SECRET = os.environ.get("GITHUB_APP_WEBHOOK_SECRET", "")
+GITHUB_APP_SLUG = os.environ.get("GITHUB_APP_SLUG", "")
