@@ -2,10 +2,12 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # See the LICENSE file for details.
 
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 
 from plane.db.models import (
@@ -136,3 +138,57 @@ class TestGithubBackfillOneActiveRun:
             response = session_client.post(backfill_url(workspace, project, linked_repo), {}, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         mock_delay.assert_called_once()
+
+
+@pytest.mark.contract
+class TestGithubBackfillBrokerDown:
+    @pytest.mark.django_db
+    def test_delay_failure_marks_run_failed_and_returns_503(self, session_client, workspace, project, linked_repo):
+        with patch(
+            "plane.bgtasks.github_app.backfill.run_github_backfill.delay", side_effect=RuntimeError("broker down")
+        ):
+            response = session_client.post(backfill_url(workspace, project, linked_repo), {}, format="json")
+
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        run = GithubBackfillRun.objects.get(linked_repo=linked_repo)
+        assert run.status == "failed"
+        assert "broker down" in run.error
+
+    @pytest.mark.django_db
+    def test_run_is_not_blocked_after_delay_failure(self, session_client, workspace, project, linked_repo):
+        with patch(
+            "plane.bgtasks.github_app.backfill.run_github_backfill.delay", side_effect=RuntimeError("broker down")
+        ):
+            session_client.post(backfill_url(workspace, project, linked_repo), {}, format="json")
+
+        with patch("plane.bgtasks.github_app.backfill.run_github_backfill.delay") as mock_delay:
+            response = session_client.post(backfill_url(workspace, project, linked_repo), {}, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        mock_delay.assert_called_once()
+
+
+@pytest.mark.contract
+class TestGithubBackfillStaleRunRecovery:
+    @pytest.mark.django_db
+    def test_stale_running_run_is_failed_and_new_run_allowed(self, session_client, workspace, project, linked_repo):
+        stale = GithubBackfillRun.objects.create(project=project, linked_repo=linked_repo, status="running")
+        GithubBackfillRun.objects.filter(pk=stale.pk).update(updated_at=timezone.now() - timedelta(minutes=31))
+
+        with patch("plane.bgtasks.github_app.backfill.run_github_backfill.delay") as mock_delay:
+            response = session_client.post(backfill_url(workspace, project, linked_repo), {}, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        mock_delay.assert_called_once()
+        stale.refresh_from_db()
+        assert stale.status == "failed"
+
+    @pytest.mark.django_db
+    def test_recently_updated_running_run_still_blocks_new_run(
+        self, session_client, workspace, project, linked_repo
+    ):
+        GithubBackfillRun.objects.create(project=project, linked_repo=linked_repo, status="running")
+
+        response = session_client.post(backfill_url(workspace, project, linked_repo), {}, format="json")
+
+        assert response.status_code == status.HTTP_409_CONFLICT

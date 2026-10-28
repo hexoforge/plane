@@ -2,7 +2,10 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # See the LICENSE file for details.
 
+from datetime import timedelta
+
 from django.db import IntegrityError
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
 
@@ -21,9 +24,15 @@ from plane.db.models import (
     Project,
     State,
 )
+from plane.utils.exception_logger import log_exception
 
 from ..base import BaseAPIView
 from .base import require_github_app
+
+# A run whose heartbeat (updated_at, touched on every page/issue/PR processed) is
+# older than this is assumed to belong to a dead worker and is failed so a new run
+# can start.
+STALE_BACKFILL_RUN_THRESHOLD = timedelta(minutes=30)
 
 
 class GithubProjectRepositoriesEndpoint(BaseAPIView):
@@ -82,6 +91,17 @@ class GithubProjectRepositoryBackfillEndpoint(BaseAPIView):
     def post(self, request, slug, project_id, pk):
         linked_repo = GithubLinkedRepository.objects.get(pk=pk, project_id=project_id, workspace__slug=slug)
 
+        now = timezone.now()
+        stale_cutoff = now - STALE_BACKFILL_RUN_THRESHOLD
+        GithubBackfillRun.objects.filter(
+            linked_repo=linked_repo, status__in=["queued", "running"], updated_at__lt=stale_cutoff
+        ).update(
+            status="failed",
+            error="Backfill run timed out (worker stopped responding)",
+            completed_at=now,
+            updated_at=now,
+        )
+
         try:
             run = GithubBackfillRun.objects.create(
                 project=linked_repo.project,
@@ -94,7 +114,19 @@ class GithubProjectRepositoryBackfillEndpoint(BaseAPIView):
                 {"error": "A backfill is already running for this repository"}, status=status.HTTP_409_CONFLICT
             )
 
-        run_github_backfill.delay(str(run.id))
+        try:
+            run_github_backfill.delay(str(run.id))
+        except Exception as e:
+            log_exception(e)
+            run.status = "failed"
+            run.error = f"Failed to queue backfill: {e}"[:2000]
+            run.completed_at = timezone.now()
+            run.save(update_fields=["status", "error", "completed_at", "updated_at"])
+            return Response(
+                {"error": "Failed to queue the backfill. Please try again."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
         return Response(GithubBackfillRunSerializer(run).data, status=status.HTTP_201_CREATED)
 
 

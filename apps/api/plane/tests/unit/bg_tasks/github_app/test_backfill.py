@@ -25,9 +25,7 @@ from plane.db.models import (
     GithubPullRequestLink,
     Issue,
     IssueActivity,
-    IssueAssignee,
     IssueComment,
-    IssueLabel,
     Label,
     ProjectMember,
     State,
@@ -129,6 +127,28 @@ class TestRunGithubBackfillIdempotency:
         assert IssueComment.objects.count() == 1
         assert GithubIssueLink.objects.filter(linked_repo=linked_repo).count() == 1
         assert GithubCommentLink.objects.count() == 1
+
+    def test_failed_link_creation_rolls_back_issue_so_rerun_does_not_duplicate(self, project, states, linked_repo):
+        issue_payload = gh_issue(1, title="Something broke")
+
+        run = GithubBackfillRun.objects.create(project=project, linked_repo=linked_repo)
+        client = make_client_mock(issues=[issue_payload])
+        with patch("plane.bgtasks.github_app.backfill.GithubAppClient", return_value=client), patch.object(
+            GithubIssueLink.objects, "create", side_effect=RuntimeError("db boom")
+        ):
+            run_github_backfill(str(run.id))
+
+        # The issue.save() inside _import_issue must not survive a link failure.
+        assert Issue.objects.filter(project=project).count() == 0
+        assert GithubIssueLink.objects.filter(linked_repo=linked_repo).count() == 0
+
+        run = GithubBackfillRun.objects.create(project=project, linked_repo=linked_repo)
+        client = make_client_mock(issues=[issue_payload])
+        with patch("plane.bgtasks.github_app.backfill.GithubAppClient", return_value=client):
+            run_github_backfill(str(run.id))
+
+        assert Issue.objects.filter(project=project).count() == 1
+        assert GithubIssueLink.objects.filter(linked_repo=linked_repo).count() == 1
 
     def test_pull_requests_filters_out_issue_entries(self, project, states, linked_repo):
         run = GithubBackfillRun.objects.create(project=project, linked_repo=linked_repo)

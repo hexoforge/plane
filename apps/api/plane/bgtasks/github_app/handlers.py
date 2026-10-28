@@ -31,7 +31,9 @@ from .sync import (
 )
 
 
-def apply_pull_request_link(issue, project, linked_repo, pr, new_state, action, is_draft, updated_at, bot_user, state_mapping):
+def apply_pull_request_link(
+    issue, project, linked_repo, pr, new_state, action, is_draft, updated_at, bot_user, state_mapping
+):
     """Create or update a GithubPullRequestLink for one (issue, PR) pair and move
     the issue's state per the opened/merged mapping. Shared by the webhook handler
     and the backfill task so both honor the same never-move-backward-out-of-merged

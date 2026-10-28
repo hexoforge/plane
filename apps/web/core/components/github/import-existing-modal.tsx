@@ -36,7 +36,7 @@ export function GithubImportExistingModal(props: Props) {
   const { t } = useTranslation();
 
   const statusKey = GITHUB_APP_REPOSITORY_BACKFILL(workspaceSlug, projectId, repository.id);
-  const { data: run } = useSWR(
+  const { data: run, error: statusError } = useSWR(
     isOpen ? statusKey : null,
     () => githubAppIntegrationService.getRepositoryBackfillStatus(workspaceSlug, projectId, repository.id),
     { refreshInterval: (latest) => (latest && ACTIVE_STATUSES.has(latest.status) ? 2000 : 0) }
@@ -54,12 +54,16 @@ export function GithubImportExistingModal(props: Props) {
         includeClosedIssues
       );
       await mutate(statusKey);
-    } catch {
-      setToast({
-        type: TOAST_TYPE.ERROR,
-        title: t("project_settings.github.repositories.backfill.toasts.not_started.title"),
-        message: t("project_settings.github.repositories.backfill.toasts.not_started.message"),
-      });
+    } catch (error: unknown) {
+      if ((error as { status?: number })?.status === 409) {
+        await mutate(statusKey);
+      } else {
+        setToast({
+          type: TOAST_TYPE.ERROR,
+          title: t("project_settings.github.repositories.backfill.toasts.not_started.title"),
+          message: t("project_settings.github.repositories.backfill.toasts.not_started.message"),
+        });
+      }
     } finally {
       setIsStarting(false);
     }
@@ -118,6 +122,18 @@ export function GithubImportExistingModal(props: Props) {
     </div>
   );
 
+  const renderStatusError = () => (
+    <div className="flex items-center justify-between gap-2 rounded-lg bg-layer-1 p-3 text-body-sm-regular text-danger-primary">
+      <span className="flex items-center gap-2">
+        <AlertCircle className="size-4 flex-shrink-0" />
+        {t("something_went_wrong_please_try_again")}
+      </span>
+      <Button variant="secondary" size="sm" onClick={() => mutate(statusKey)}>
+        {t("common.retry")}
+      </Button>
+    </div>
+  );
+
   return (
     <ModalCore isOpen={isOpen} handleClose={handleClose} width={EModalWidth.LG}>
       <div className="flex flex-col gap-4 p-5">
@@ -130,30 +146,36 @@ export function GithubImportExistingModal(props: Props) {
           </p>
         </div>
 
-        {run && run.status === "running" && renderProgress(run)}
-        {run && run.status === "queued" && renderProgress(run)}
-        {run && run.status === "completed" && renderCompleted(run)}
-        {run && run.status === "failed" && renderFailed(run)}
+        {statusError ? (
+          renderStatusError()
+        ) : (
+          <>
+            {run && run.status === "running" && renderProgress(run)}
+            {run && run.status === "queued" && renderProgress(run)}
+            {run && run.status === "completed" && renderCompleted(run)}
+            {run && run.status === "failed" && renderFailed(run)}
 
-        {!isActive && (
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="include-closed-issues"
-              checked={includeClosedIssues}
-              onChange={(e) => setIncludeClosedIssues(e.target.checked)}
-              disabled={isStarting}
-            />
-            <label htmlFor="include-closed-issues" className="text-body-sm-regular text-secondary">
-              {t("project_settings.github.repositories.backfill.include_closed_issues")}
-            </label>
-          </div>
+            {!isActive && (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="include-closed-issues"
+                  checked={includeClosedIssues}
+                  onChange={(e) => setIncludeClosedIssues(e.target.checked)}
+                  disabled={isStarting}
+                />
+                <label htmlFor="include-closed-issues" className="text-body-sm-regular text-secondary">
+                  {t("project_settings.github.repositories.backfill.include_closed_issues")}
+                </label>
+              </div>
+            )}
+          </>
         )}
 
         <div className="flex items-center justify-end gap-2 border-t border-subtle pt-4">
           <Button variant="secondary" size="sm" onClick={handleClose}>
             {t("common.close")}
           </Button>
-          {!isActive && (
+          {!statusError && !isActive && (
             <Button variant="primary" size="sm" loading={isStarting} onClick={handleStart}>
               {run && run.status !== "queued"
                 ? t("project_settings.github.repositories.backfill.import_again")

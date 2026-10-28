@@ -136,7 +136,7 @@ export class GithubAppIntegrationService extends APIService {
     )
       .then((response) => response?.data)
       .catch((error) => {
-        throw error?.response?.data;
+        throw { status: error?.response?.status, ...error?.response?.data };
       });
   }
 

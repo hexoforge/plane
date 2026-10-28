@@ -3,6 +3,7 @@
 # See the LICENSE file for details.
 
 from celery import shared_task
+from django.db import transaction
 from django.utils import timezone
 
 from plane.db.models import (
@@ -97,18 +98,20 @@ def _import_issue(client, run, linked_repo, project, gh_issue, bot_user, state_m
         external_source="github",
         external_id=str(gh_issue.get("id")),
     )
-    issue.save(created_by_id=bot_user.id)
-
-    issue_link = GithubIssueLink.objects.create(
-        project=project,
-        issue=issue,
-        linked_repo=linked_repo,
-        gh_issue_id=gh_issue.get("id"),
-        gh_issue_number=gh_issue_number,
-        url=gh_issue.get("html_url", ""),
-        gh_state=gh_issue.get("state", "open"),
-        gh_updated_at=parse_gh_datetime(gh_issue.get("updated_at")) or timezone.now(),
-    )
+    # Issue and its link must land together: a dangling issue without a link would
+    # be re-imported as a duplicate on the next run (idempotency keys off the link).
+    with transaction.atomic():
+        issue.save(created_by_id=bot_user.id)
+        issue_link = GithubIssueLink.objects.create(
+            project=project,
+            issue=issue,
+            linked_repo=linked_repo,
+            gh_issue_id=gh_issue.get("id"),
+            gh_issue_number=gh_issue_number,
+            url=gh_issue.get("html_url", ""),
+            gh_state=gh_issue.get("state", "open"),
+            gh_updated_at=parse_gh_datetime(gh_issue.get("updated_at")) or timezone.now(),
+        )
 
     label_names = [label.get("name") for label in gh_issue.get("labels", []) if label.get("name")]
     for label in match_or_create_labels(project, label_names):
