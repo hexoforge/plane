@@ -95,7 +95,11 @@ class PageViewSet(BaseViewSet):
                 projects__archived_at__isnull=True,
             )
             .filter(parent__isnull=True)
-            .filter(Q(owned_by=self.request.user) | Q(access=0))
+            .filter(
+                Q(owned_by=self.request.user)
+                | Q(access=0)
+                | Q(shares__user=self.request.user, shares__deleted_at__isnull=True)
+            )
             .prefetch_related("projects")
             .select_related("workspace")
             .select_related("owned_by")
@@ -499,13 +503,21 @@ class PagesDescriptionViewSet(BaseViewSet):
     permission_classes = [ProjectPagePermission]
 
     def retrieve(self, request, slug, project_id, page_id):
-        page = Page.objects.get(
-            Q(owned_by=self.request.user) | Q(access=0),
-            pk=page_id,
-            workspace__slug=slug,
-            projects__id=project_id,
-            project_pages__deleted_at__isnull=True,
+        page = (
+            Page.objects.filter(
+                Q(owned_by=self.request.user)
+                | Q(access=0)
+                | Q(shares__user=self.request.user, shares__deleted_at__isnull=True),
+                pk=page_id,
+                workspace__slug=slug,
+                projects__id=project_id,
+                project_pages__deleted_at__isnull=True,
+            )
+            .distinct()
+            .first()
         )
+        if page is None:
+            return Response({"error": "Page not found"}, status=status.HTTP_404_NOT_FOUND)
         binary_data = page.description_binary
 
         def stream_data():
@@ -519,13 +531,21 @@ class PagesDescriptionViewSet(BaseViewSet):
         return response
 
     def partial_update(self, request, slug, project_id, page_id):
-        page = Page.objects.get(
-            Q(owned_by=self.request.user) | Q(access=0),
-            pk=page_id,
-            workspace__slug=slug,
-            projects__id=project_id,
-            project_pages__deleted_at__isnull=True,
+        page = (
+            Page.objects.filter(
+                Q(owned_by=self.request.user)
+                | Q(access=0)
+                | Q(shares__user=self.request.user, shares__deleted_at__isnull=True),
+                pk=page_id,
+                workspace__slug=slug,
+                projects__id=project_id,
+                project_pages__deleted_at__isnull=True,
+            )
+            .distinct()
+            .first()
         )
+        if page is None:
+            return Response({"error": "Page not found"}, status=status.HTTP_404_NOT_FOUND)
 
         if page.is_locked:
             return Response(

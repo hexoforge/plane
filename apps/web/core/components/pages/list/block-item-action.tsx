@@ -19,16 +19,18 @@ import type { EPageStoreType } from "@/hooks/store";
 // store
 import type { TPageInstance } from "@/store/pages/base-page";
 // local imports
-import { PageActions } from "../dropdowns";
+import { PageCollectionSelect } from "../collections/page-collection-select";
+import { PageActions } from "../dropdowns/actions";
 
 type Props = {
   page: TPageInstance;
   parentRef: React.RefObject<HTMLElement>;
   storeType: EPageStoreType;
+  projectId: string;
 };
 
 export const BlockItemAction = observer(function BlockItemAction(props: Props) {
-  const { page, parentRef, storeType } = props;
+  const { page, parentRef, storeType, projectId } = props;
   // store hooks
   const { getUserDetails } = useMember();
   // page operations
@@ -52,6 +54,9 @@ export const BlockItemAction = observer(function BlockItemAction(props: Props) {
           {access === 0 ? <Earth className="h-4 w-4" /> : <LockIcon className="h-4 w-4" />}
         </Tooltip>
       </div>
+      {/* collection assignment */}
+      <PageCollectionSelect page={page} projectId={projectId} />
+
       {/* vertical divider */}
       <Minus className="-mx-3 h-5 w-5 rotate-90 text-placeholder" strokeWidth={1} />
 
@@ -82,6 +87,7 @@ export const BlockItemAction = observer(function BlockItemAction(props: Props) {
           "make-a-copy",
           "toggle-lock",
           "toggle-access",
+          "share",
           "archive-restore",
           "delete",
         ]}

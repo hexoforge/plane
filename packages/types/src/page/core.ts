@@ -22,7 +22,14 @@ export type TPage = {
   label_ids: string[] | undefined;
   name: string | undefined;
   owned_by: string | undefined;
+  parent: string | null | undefined;
+  collection: string | null | undefined;
+  sort_order: number | undefined;
   project_ids?: string[] | undefined;
+  parent?: string | null;
+  collection?: string | null;
+  is_global?: boolean;
+  sort_order?: number;
   updated_at: Date | undefined;
   updated_by: string | undefined;
   workspace: string | undefined;

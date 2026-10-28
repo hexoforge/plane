@@ -86,6 +86,7 @@
     }
   },
   "wiki": {
+    "title": "Wiki",
     "upgrade_flow": {
       "title": "Upgrade to unlock Wiki",
       "description": "Unlock public pages, version history, shared pages, real-time collaboration, and workspace pages for wikis, company-wide docs, and knowledge bases with Plane Pro.",
