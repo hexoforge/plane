@@ -30,10 +30,12 @@ class GithubWorkspaceIntegrationEndpoint(BaseAPIView):
             installation = GithubAppInstallation.objects.filter(workspace__slug=slug).first()
             if installation:
                 installation_data = {
+                    "id": str(installation.id),
                     "installation_id": installation.installation_id,
                     "account_login": installation.account_login,
                     "account_type": installation.account_type,
-                    "suspended": installation.suspended_at is not None,
+                    "suspended_at": installation.suspended_at,
+                    "created_at": installation.created_at,
                 }
 
         return Response(

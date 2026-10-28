@@ -63,11 +63,13 @@ export function GithubWorkspaceConnectionCard(props: Props) {
           <span className="truncate text-body-sm-medium text-primary">
             {t("workspace_settings.settings.github_integration.connected_as")} {installation.account_login}
           </span>
-          <span className="truncate text-body-xs-regular text-tertiary">
-            {t("workspace_settings.settings.github_integration.connected_on", {
-              date: renderFormattedDate(installation.created_at),
-            })}
-          </span>
+          {installation.created_at && (
+            <span className="truncate text-body-xs-regular text-tertiary">
+              {t("workspace_settings.settings.github_integration.connected_on", {
+                date: renderFormattedDate(installation.created_at),
+              })}
+            </span>
+          )}
         </div>
         {installation.suspended_at && (
           <span className="bg-amber-50 text-amber-500 flex-shrink-0 rounded-sm px-2 py-1 text-11 font-medium">
