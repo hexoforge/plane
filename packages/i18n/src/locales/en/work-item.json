@@ -422,5 +422,16 @@
       "label": "Epic Title",
       "required": "Epic title is required."
     }
+  },
+  "github": {
+    "title": "GitHub",
+    "pull_requests": "Pull requests",
+    "linked_issue": "Linked GitHub issue",
+    "state": {
+      "open": "Open",
+      "draft": "Draft",
+      "merged": "Merged",
+      "closed": "Closed"
+    }
   }
 }

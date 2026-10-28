@@ -27,19 +27,27 @@ const projectHrefToLabelMap = PROJECT_SETTINGS_FLAT_MAP.reduce(
   {} as Record<string, string>
 );
 
+// Settings hrefs can be deeper than two segments (e.g. /settings/integrations/github),
+// so resolve to the longest known href that prefixes the path instead of a fixed slice.
+const longestHrefMatch = (subPath: string, hrefs: string[]) =>
+  hrefs.filter((href) => subPath === href || subPath.startsWith(`${href}/`)).toSorted((a, b) => b.length - a.length)[0];
+
 export const pathnameToAccessKey = (pathname: string) => {
   const pathArray = pathname.replace(/^\/|\/$/g, "").split("/"); // Regex removes leading and trailing slashes
   const workspaceSlug = pathArray[0];
-  const accessKey = pathArray.slice(1, 3).join("/");
-  return { workspaceSlug, accessKey: `/${accessKey}` || "" };
+  const subPath = `/${pathArray.slice(1).join("/")}`;
+  const accessKey =
+    longestHrefMatch(subPath, Object.keys(workspaceHrefToLabelMap)) ?? `/${pathArray.slice(1, 3).join("/")}`;
+  return { workspaceSlug, accessKey };
 };
 
 export const getWorkspaceActivePath = (pathname: string) => {
   const parts = pathname.split("/").filter(Boolean);
   const settingsIndex = parts.indexOf("settings");
   if (settingsIndex === -1) return null;
-  const subPath = "/" + parts.slice(settingsIndex, settingsIndex + 2).join("/");
-  return workspaceHrefToLabelMap[subPath];
+  const subPath = "/" + parts.slice(settingsIndex).join("/");
+  const href = longestHrefMatch(subPath, Object.keys(workspaceHrefToLabelMap));
+  return href ? workspaceHrefToLabelMap[href] : null;
 };
 
 export const getProjectActivePath = (pathname: string) => {

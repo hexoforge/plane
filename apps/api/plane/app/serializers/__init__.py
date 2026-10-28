@@ -140,3 +140,10 @@ from .draft import (
     DraftIssueSerializer,
     DraftIssueDetailSerializer,
 )
+
+from .github_app import (
+    GithubLinkedRepositorySerializer,
+    GithubProjectStateMappingSerializer,
+    GithubPullRequestLinkSerializer,
+    GithubIssueLinkSerializer,
+)

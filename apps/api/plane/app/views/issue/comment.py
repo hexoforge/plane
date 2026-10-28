@@ -9,7 +9,7 @@ import json
 from django.utils import timezone
 from django.db.models import Exists
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 
 # Third Party imports
 from rest_framework.response import Response
@@ -20,6 +20,7 @@ from .. import BaseViewSet
 from plane.app.serializers import IssueCommentSerializer, CommentReactionSerializer
 from plane.app.permissions import allow_permission, ROLE
 from plane.db.models import IssueComment, ProjectMember, CommentReaction, Project, Issue
+from plane.bgtasks.github_app.outbound import sync_comment_to_github
 from plane.bgtasks.issue_activities_task import issue_activity
 from plane.utils.host import base_host
 from plane.bgtasks.webhook_task import model_activity
@@ -103,6 +104,10 @@ class IssueCommentViewSet(BaseViewSet):
                 slug=slug,
                 origin=base_host(request=request, is_app=True),
             )
+            comment_id = serializer.data["id"]
+            transaction.on_commit(
+                lambda: sync_comment_to_github.delay(comment_id=str(comment_id), action="create")
+            )
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -138,6 +143,7 @@ class IssueCommentViewSet(BaseViewSet):
                 slug=slug,
                 origin=base_host(request=request, is_app=True),
             )
+            transaction.on_commit(lambda: sync_comment_to_github.delay(comment_id=str(pk), action="update"))
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -157,6 +163,7 @@ class IssueCommentViewSet(BaseViewSet):
             notification=True,
             origin=base_host(request=request, is_app=True),
         )
+        transaction.on_commit(lambda: sync_comment_to_github.delay(comment_id=str(pk), action="delete"))
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
