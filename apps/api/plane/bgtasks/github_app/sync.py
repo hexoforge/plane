@@ -16,8 +16,12 @@ from plane.db.models import (
     GithubLinkedRepository,
     GithubProjectStateMapping,
     IssueActivity,
+    IssueAssignee,
+    ProjectMember,
     User,
+    WorkspaceMember,
 )
+from plane.utils.github_app.assignee_mapping import map_assignees
 from plane.utils.github_app.markdown import render_markdown as _render_markdown
 
 
@@ -142,6 +146,67 @@ def record_github_activity(issue, actor, verb, comment):
         field="github",
         comment=comment,
     )
+
+
+def ensure_bot_project_membership(project, bot_user):
+    """Make the GitHub bot an active member of the workspace and project it writes to.
+
+    Without this, the bot (as `created_by` on imported issues) is not a
+    ProjectMember, so queries that join assignees through `member_project`
+    (e.g. the assignee_ids annotation used while saving issue edits) can
+    behave as if the issue has no valid participants, making the assignee
+    field on bot-created issues effectively uneditable.
+    """
+    WorkspaceMember.objects.get_or_create(
+        workspace=project.workspace, member=bot_user, defaults={"role": 15, "is_active": True}
+    )
+    ProjectMember.objects.get_or_create(
+        project=project, member=bot_user, defaults={"workspace": project.workspace, "role": 15, "is_active": True}
+    )
+
+
+def sync_issue_assignees(issue, project, gh_assignees, issue_link, client=None, cache=None):
+    """Full resync of an issue's Plane assignees from GitHub's current assignee list.
+
+    Stores every GitHub login on `issue_link.assignee_logins` (each tagged with
+    whether it mapped to a Plane user) so the work item's GitHub section can
+    display them, unmapped ones included. Only mapped users whose login was
+    added or removed since the previous sync are touched, so a Plane-side
+    manual assignee who happens to be unmapped on GitHub is never removed by
+    an unrelated GitHub unassign.
+    """
+    mapped, unmapped_logins = map_assignees(project, gh_assignees, client=client, cache=cache)
+    new_logins = set(mapped) | set(unmapped_logins)
+
+    previous_entries = issue_link.assignee_logins or []
+    previous_by_login = {entry["login"]: entry for entry in previous_entries}
+    previously_mapped_logins = {login for login, entry in previous_by_login.items() if entry.get("mapped")}
+
+    for login in set(mapped) - previously_mapped_logins:
+        IssueAssignee.objects.get_or_create(
+            issue=issue,
+            assignee=mapped[login],
+            defaults={
+                "project": project,
+                "workspace": project.workspace,
+                "created_by_id": issue.created_by_id,
+                "updated_by_id": issue.created_by_id,
+            },
+        )
+
+    removed_user_ids = [
+        previous_by_login[login]["user_id"]
+        for login in previously_mapped_logins - new_logins
+        if previous_by_login[login].get("user_id")
+    ]
+    if removed_user_ids:
+        IssueAssignee.objects.filter(issue=issue, assignee_id__in=removed_user_ids).delete()
+
+    issue_link.assignee_logins = [
+        {"login": login, "mapped": login in mapped, "user_id": str(mapped[login].id) if login in mapped else None}
+        for login in sorted(new_logins)
+    ]
+    issue_link.save(update_fields=["assignee_logins", "updated_at"])
 
 
 def match_labels(project, label_names):

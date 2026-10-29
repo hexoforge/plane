@@ -2,24 +2,30 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # See the LICENSE file for details.
 
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from django.utils import timezone
 
-from plane.bgtasks.github_app.outbound import sync_comment_to_github, sync_issue_state_to_github
+from plane.bgtasks.github_app.outbound import (
+    sync_comment_to_github,
+    sync_issue_assignees_to_github,
+    sync_issue_state_to_github,
+)
 from plane.db.models import (
+    Account,
     GithubAppInstallation,
     GithubCommentLink,
     GithubIssueLink,
     GithubLinkedRepository,
     GithubProjectStateMapping,
     Issue,
+    IssueAssignee,
     IssueComment,
     State,
     StateGroup,
 )
-from plane.tests.factories import ProjectFactory, UserFactory
+from plane.tests.factories import ProjectFactory, ProjectMemberFactory, UserFactory
 
 
 @pytest.fixture
@@ -169,6 +175,18 @@ class TestSyncCommentToGithub:
         assert comment_link.gh_comment_id == 4242
         assert comment_link.source == "plane"
 
+    def test_create_posts_markdown_converted_from_html_not_plain_text(self, project, linked_repo):
+        issue, link = self._setup_issue(project, linked_repo)
+        comment = IssueComment.objects.create(
+            project=project, issue=issue, actor=UserFactory(), comment_html="<p><strong>bold</strong> text</p>"
+        )
+
+        with patch("plane.bgtasks.github_app.outbound.GithubAppClient") as MockClient:
+            MockClient.return_value.create_issue_comment.return_value = {"id": 4242}
+            sync_comment_to_github(comment_id=str(comment.id), action="create")
+
+        MockClient.return_value.create_issue_comment.assert_called_once_with("acme/widgets", 7, "**bold** text")
+
     def test_create_is_idempotent_when_link_already_exists(self, project, linked_repo):
         issue, link = self._setup_issue(project, linked_repo)
         comment = self._make_comment(project, issue)
@@ -267,5 +285,101 @@ class TestSyncCommentToGithub:
 
         with patch("plane.bgtasks.github_app.outbound.GithubAppClient") as MockClient:
             sync_comment_to_github(comment_id=str(comment.id), action="create")
+
+        MockClient.assert_not_called()
+
+
+@pytest.mark.django_db
+class TestSyncIssueAssigneesToGithub:
+    def _setup_issue(self, project, linked_repo, assignee_logins=None):
+        state = _make_state(project, StateGroup.BACKLOG)
+        issue = _make_issue(project, state)
+        link = _make_issue_link(project, linked_repo, issue)
+        if assignee_logins is not None:
+            link.assignee_logins = assignee_logins
+            link.save(update_fields=["assignee_logins"])
+        return issue, link
+
+    def test_noop_when_toggle_is_off_by_default(self, project, linked_repo):
+        issue, link = self._setup_issue(project, linked_repo)
+
+        with patch("plane.bgtasks.github_app.outbound.GithubAppClient") as MockClient:
+            sync_issue_assignees_to_github(issue_id=str(issue.id))
+
+        MockClient.assert_not_called()
+
+    def test_pushes_mapped_assignee_login_when_enabled(self, project, linked_repo):
+        issue, link = self._setup_issue(project, linked_repo)
+        GithubProjectStateMapping.objects.create(workspace=project.workspace, project=project, sync_assignees=True)
+        member = UserFactory()
+        ProjectMemberFactory(project=project, member=member, role=15)
+        Account.objects.create(user=member, provider="github", provider_account_id="501")
+        IssueAssignee.objects.create(issue=issue, assignee=member, project=project, workspace=project.workspace)
+
+        with patch("plane.bgtasks.github_app.outbound.GithubAppClient") as MockClient:
+            MockClient.return_value.get_user_by_id.return_value = {"login": "octocat"}
+            MockClient.return_value.update_issue_assignees.return_value = {
+                "assignees": [{"login": "octocat"}]
+            }
+            sync_issue_assignees_to_github(issue_id=str(issue.id))
+
+        MockClient.return_value.update_issue_assignees.assert_called_once_with("acme/widgets", 7, {"octocat"})
+        link.refresh_from_db()
+        assert link.assignee_logins == [{"login": "octocat", "mapped": True, "user_id": str(member.id)}]
+
+    def test_keeps_unmapped_github_assignee_untouched(self, project, linked_repo):
+        issue, link = self._setup_issue(
+            project, linked_repo, assignee_logins=[{"login": "stranger", "mapped": False, "user_id": None}]
+        )
+        GithubProjectStateMapping.objects.create(workspace=project.workspace, project=project, sync_assignees=True)
+        member = UserFactory()
+        ProjectMemberFactory(project=project, member=member, role=15)
+        Account.objects.create(user=member, provider="github", provider_account_id="501")
+        IssueAssignee.objects.create(issue=issue, assignee=member, project=project, workspace=project.workspace)
+
+        with patch("plane.bgtasks.github_app.outbound.GithubAppClient") as MockClient:
+            MockClient.return_value.get_user_by_id.return_value = {"login": "octocat"}
+            MockClient.return_value.update_issue_assignees.return_value = {
+                "assignees": [{"login": "octocat"}, {"login": "stranger"}]
+            }
+            sync_issue_assignees_to_github(issue_id=str(issue.id))
+
+        MockClient.return_value.update_issue_assignees.assert_called_once_with(
+            "acme/widgets", 7, {"octocat", "stranger"}
+        )
+
+    def test_noop_when_desired_set_already_matches_github(self, project, linked_repo):
+        issue, link = self._setup_issue(
+            project, linked_repo, assignee_logins=[{"login": "octocat", "mapped": True, "user_id": None}]
+        )
+        GithubProjectStateMapping.objects.create(workspace=project.workspace, project=project, sync_assignees=True)
+        member = UserFactory()
+        ProjectMemberFactory(project=project, member=member, role=15)
+        Account.objects.create(user=member, provider="github", provider_account_id="501")
+        IssueAssignee.objects.create(issue=issue, assignee=member, project=project, workspace=project.workspace)
+        link.assignee_logins = [{"login": "octocat", "mapped": True, "user_id": str(member.id)}]
+        link.save(update_fields=["assignee_logins"])
+
+        with patch("plane.bgtasks.github_app.outbound.GithubAppClient") as MockClient:
+            sync_issue_assignees_to_github(issue_id=str(issue.id))
+
+        MockClient.return_value.update_issue_assignees.assert_not_called()
+
+    def test_skips_when_actor_is_the_github_bot_to_prevent_loops(self, project, linked_repo):
+        issue, link = self._setup_issue(project, linked_repo)
+        GithubProjectStateMapping.objects.create(workspace=project.workspace, project=project, sync_assignees=True)
+        bot = _github_bot_user(project.workspace)
+
+        with patch("plane.bgtasks.github_app.outbound.GithubAppClient") as MockClient:
+            sync_issue_assignees_to_github(issue_id=str(issue.id), actor_id=str(bot.id))
+
+        MockClient.assert_not_called()
+
+    def test_noop_when_issue_has_no_github_link(self, project):
+        state = _make_state(project, StateGroup.BACKLOG)
+        issue = _make_issue(project, state)
+
+        with patch("plane.bgtasks.github_app.outbound.GithubAppClient") as MockClient:
+            sync_issue_assignees_to_github(issue_id=str(issue.id))
 
         MockClient.assert_not_called()
