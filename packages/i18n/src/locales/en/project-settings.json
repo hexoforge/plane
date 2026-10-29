@@ -255,6 +255,8 @@
         "auto_create_issues_description": "Automatically create a work item when an issue is opened in a linked repository.",
         "sync_comments": "Sync comments",
         "sync_comments_description": "Keep comments in sync between Plane and GitHub.",
+        "sync_assignees": "Two-way assignee sync",
+        "sync_assignees_description": "Push assignee changes made in Plane to the linked GitHub issue. Off by default.",
         "save": "Save changes",
         "toasts": {
           "saved": { "title": "Saved", "message": "GitHub settings have been updated." },

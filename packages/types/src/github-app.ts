@@ -42,6 +42,7 @@ export type TGithubStateMapping = {
   issue_reopened_state: string | null;
   auto_create_issues: boolean;
   sync_comments: boolean;
+  sync_assignees: boolean;
 };
 
 export type TGithubPullRequestState = "open" | "draft" | "merged" | "closed";
@@ -60,12 +61,19 @@ export type TGithubPullRequestLink = {
   gh_updated_at: string;
 };
 
+export type TGithubAssigneeLogin = {
+  login: string;
+  mapped: boolean;
+  user_id: string | null;
+};
+
 export type TGithubIssueLink = {
   id: string;
   gh_issue_number: number;
   url: string;
   gh_state: "open" | "closed";
   repository_full_name: string;
+  assignee_logins: TGithubAssigneeLogin[];
 };
 
 export type TWorkItemGithubLinks = {

@@ -4,11 +4,16 @@
  * See the LICENSE file for details.
  */
 
-import { ExternalLink, GitMerge, GitPullRequest, GitPullRequestDraft } from "lucide-react";
+import { CircleAlert, ExternalLink, GitMerge, GitPullRequest, GitPullRequestDraft } from "lucide-react";
 // plane imports
 import { useTranslation } from "@plane/i18n";
-import type { TGithubPullRequestLink, TGithubPullRequestState, TWorkItemGithubLinks } from "@plane/types";
-import { Avatar } from "@plane/ui";
+import type {
+  TGithubAssigneeLogin,
+  TGithubPullRequestLink,
+  TGithubPullRequestState,
+  TWorkItemGithubLinks,
+} from "@plane/types";
+import { Avatar, Tooltip } from "@plane/ui";
 import { cn } from "@plane/utils";
 
 const PR_STATE_CONFIG: Record<TGithubPullRequestState, { className: string; icon: typeof GitPullRequest }> = {
@@ -30,26 +35,31 @@ export function GithubCollapsibleContent(props: Props) {
   return (
     <div className="flex flex-col gap-2 px-1.5 pb-2">
       {links.issue_link && (
-        <a
-          href={links.issue_link.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-between gap-2 rounded-md px-1.5 py-1.5 hover:bg-layer-1"
-        >
-          <span className="min-w-0 truncate text-body-sm-regular text-secondary">
-            {t("github.linked_issue")}: {links.issue_link.repository_full_name}#{links.issue_link.gh_issue_number}
-          </span>
-          <span
-            className={cn(
-              "flex-shrink-0 rounded-sm px-2 py-0.5 text-11 font-medium",
-              links.issue_link.gh_state === "open"
-                ? "bg-green-50 text-success-primary"
-                : "bg-red-50 text-danger-primary"
-            )}
+        <>
+          <a
+            href={links.issue_link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between gap-2 rounded-md px-1.5 py-1.5 hover:bg-layer-1"
           >
-            {links.issue_link.gh_state === "open" ? t("github.state.open") : t("github.state.closed")}
-          </span>
-        </a>
+            <span className="min-w-0 truncate text-body-sm-regular text-secondary">
+              {t("github.linked_issue")}: {links.issue_link.repository_full_name}#{links.issue_link.gh_issue_number}
+            </span>
+            <span
+              className={cn(
+                "flex-shrink-0 rounded-sm px-2 py-0.5 text-11 font-medium",
+                links.issue_link.gh_state === "open"
+                  ? "bg-green-50 text-success-primary"
+                  : "bg-red-50 text-danger-primary"
+              )}
+            >
+              {links.issue_link.gh_state === "open" ? t("github.state.open") : t("github.state.closed")}
+            </span>
+          </a>
+          {links.issue_link.assignee_logins.length > 0 && (
+            <AssigneeLogins assignees={links.issue_link.assignee_logins} />
+          )}
+        </>
       )}
       {links.pull_requests.length > 0 && (
         <div className="flex max-h-64 flex-col gap-1.5 overflow-y-auto">
@@ -58,6 +68,32 @@ export function GithubCollapsibleContent(props: Props) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function AssigneeLogins({ assignees }: { assignees: TGithubAssigneeLogin[] }) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 px-1.5 pb-1">
+      <span className="text-body-xs-regular text-tertiary">{t("github.assignees")}:</span>
+      {assignees.map((assignee) => (
+        <span
+          key={assignee.login}
+          className={cn(
+            "flex items-center gap-1 rounded-sm px-2 py-0.5 text-11 font-medium",
+            assignee.mapped ? "bg-layer-1 text-secondary" : "bg-amber-50 text-amber-500"
+          )}
+        >
+          {assignee.login}
+          {!assignee.mapped && (
+            <Tooltip tooltipContent={t("github.unmapped_assignee_tooltip")}>
+              <CircleAlert className="size-3" aria-label={t("github.unmapped_assignee_tooltip")} />
+            </Tooltip>
+          )}
+        </span>
+      ))}
     </div>
   );
 }
