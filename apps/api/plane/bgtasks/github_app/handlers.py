@@ -14,11 +14,14 @@ from plane.db.models import (
     Issue,
     IssueComment,
     IssueLabel,
+    StateGroup,
 )
+from plane.utils.github_app.client import GithubAppClient
 from plane.utils.github_app.refs import extract_refs
 
 from .sync import (
     body_hash,
+    ensure_bot_project_membership,
     get_linked_repo,
     get_or_create_bot_user,
     get_state_mapping,
@@ -28,6 +31,7 @@ from .sync import (
     parse_gh_datetime,
     record_github_activity,
     render_markdown,
+    sync_issue_assignees,
 )
 
 
@@ -136,6 +140,8 @@ def _get_or_create_issue_link(linked_repo, gh_issue, bot_user, state_mapping):
     if state_mapping and not state_mapping.auto_create_issues:
         return None, False
 
+    ensure_bot_project_membership(project, bot_user)
+
     issue = Issue(
         project=project,
         workspace=project.workspace,
@@ -187,6 +193,7 @@ def handle_issues(payload):
     project = linked_repo.project
     state_mapping = get_state_mapping(project)
     bot_user = get_or_create_bot_user(linked_repo.workspace)
+    client = GithubAppClient(linked_repo.installation.installation_id)
 
     issue_link, created = _get_or_create_issue_link(linked_repo, gh_issue, bot_user, state_mapping)
     if not issue_link:
@@ -194,12 +201,14 @@ def handle_issues(payload):
 
     updated_at = parse_gh_datetime(gh_issue.get("updated_at")) or timezone.now()
     if created:
+        sync_issue_assignees(issue_link.issue, project, gh_issue.get("assignees") or [], issue_link, client=client)
         return "processed"
 
     if is_stale(issue_link.gh_updated_at, updated_at):
         return "skipped"
 
     issue = issue_link.issue
+    sync_issue_assignees(issue, project, gh_issue.get("assignees") or [], issue_link, client=client)
 
     if action == "labeled":
         label_name = (payload.get("label") or {}).get("name")
@@ -212,11 +221,18 @@ def handle_issues(payload):
     if action == "edited":
         issue.name = gh_issue.get("title") or issue.name
         issue.description_html = render_markdown(gh_issue.get("body"))
-        issue.save(update_fields=["name", "description_html", "description_stripped", "updated_at"])
+        issue.description_binary = None
+        issue.save(
+            update_fields=["name", "description_html", "description_stripped", "description_binary", "updated_at"]
+        )
 
     elif action == "closed":
-        target_state = (state_mapping.issue_closed_state if state_mapping else None) or project.default_state
-        move_issue_state(issue, target_state, bot_user)
+        # A Plane item already marked done shouldn't be yanked into whatever
+        # state GitHub-closed is mapped to (which may be a "cancelled" state).
+        already_done = issue.state and issue.state.group == StateGroup.COMPLETED
+        if not already_done:
+            target_state = (state_mapping.issue_closed_state if state_mapping else None) or project.default_state
+            move_issue_state(issue, target_state, bot_user)
 
     elif action == "reopened":
         target_state = (state_mapping.issue_reopened_state if state_mapping else None) or project.default_state

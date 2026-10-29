@@ -427,6 +427,8 @@
     "title": "GitHub",
     "pull_requests": "Pull requests",
     "linked_issue": "Linked GitHub issue",
+    "assignees": "GitHub assignees",
+    "unmapped_assignee_tooltip": "Not linked to a Plane member",
     "state": {
       "open": "Open",
       "draft": "Draft",

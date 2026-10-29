@@ -204,8 +204,26 @@ class GithubAppClient:
         url = f"{GITHUB_API_BASE_URL}/repos/{repo_full_name}/issues/{number}/comments"
         return self._paginate(url)
 
+    def get_issue_comment(self, repo_full_name, comment_id):
+        url = f"{GITHUB_API_BASE_URL}/repos/{repo_full_name}/issues/comments/{comment_id}"
+        response = self._request("GET", url, headers=self._auth_headers())
+        self._raise_for_status(response)
+        return response.json()
+
     def get_issue(self, repo_full_name, number):
         url = f"{GITHUB_API_BASE_URL}/repos/{repo_full_name}/issues/{number}"
+        response = self._request("GET", url, headers=self._auth_headers())
+        self._raise_for_status(response)
+        return response.json()
+
+    def get_user(self, login):
+        url = f"{GITHUB_API_BASE_URL}/users/{login}"
+        response = self._request("GET", url, headers=self._auth_headers())
+        self._raise_for_status(response)
+        return response.json()
+
+    def get_user_by_id(self, account_id):
+        url = f"{GITHUB_API_BASE_URL}/user/{account_id}"
         response = self._request("GET", url, headers=self._auth_headers())
         self._raise_for_status(response)
         return response.json()
@@ -216,6 +234,14 @@ class GithubAppClient:
         if state_reason is not None:
             payload["state_reason"] = state_reason
         response = self._request("PATCH", url, headers=self._auth_headers(), json=payload)
+        self._raise_for_status(response)
+        return response.json()
+
+    def update_issue_assignees(self, repo_full_name, number, logins):
+        url = f"{GITHUB_API_BASE_URL}/repos/{repo_full_name}/issues/{number}"
+        response = self._request(
+            "PATCH", url, headers=self._auth_headers(), json={"assignees": list(logins)}
+        )
         self._raise_for_status(response)
         return response.json()
 

@@ -91,6 +91,7 @@ class GithubProjectStateMapping(ProjectBaseModel):
     )
     auto_create_issues = models.BooleanField(default=True)
     sync_comments = models.BooleanField(default=True)
+    sync_assignees = models.BooleanField(default=False)
 
     def __str__(self):
         return f"State mapping <{self.project.identifier}>"
@@ -159,6 +160,7 @@ class GithubIssueLink(ProjectBaseModel):
     url = models.URLField(max_length=1000)
     gh_state = models.CharField(max_length=20)
     gh_updated_at = models.DateTimeField()
+    assignee_logins = models.JSONField(default=list, blank=True)
 
     def __str__(self):
         return f"{self.linked_repo.full_name}#{self.gh_issue_number}"

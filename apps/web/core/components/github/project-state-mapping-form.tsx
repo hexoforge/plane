@@ -27,6 +27,7 @@ const defaultStateMapping: TGithubStateMapping = {
   issue_reopened_state: null,
   auto_create_issues: true,
   sync_comments: true,
+  sync_assignees: false,
 };
 
 type Props = {
@@ -155,6 +156,29 @@ export function GithubProjectStateMappingForm(props: Props) {
               onChange={onChange}
               disabled={disabled}
               label={t("project_settings.github.state_mapping.sync_comments")}
+            />
+          )}
+        />
+      </div>
+
+      <div className="flex items-center justify-between gap-4 border-t border-subtle pt-4">
+        <div className="flex flex-col">
+          <span className="text-body-sm-medium text-primary">
+            {t("project_settings.github.state_mapping.sync_assignees")}
+          </span>
+          <span className="text-body-xs-regular text-tertiary">
+            {t("project_settings.github.state_mapping.sync_assignees_description")}
+          </span>
+        </div>
+        <Controller
+          control={control}
+          name="sync_assignees"
+          render={({ field: { value, onChange } }) => (
+            <ToggleSwitch
+              value={value}
+              onChange={onChange}
+              disabled={disabled}
+              label={t("project_settings.github.state_mapping.sync_assignees")}
             />
           )}
         />

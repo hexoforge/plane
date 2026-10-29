@@ -7,16 +7,13 @@ from django.db import transaction
 from django.utils import timezone
 
 from plane.db.models import (
-    Account,
     GithubBackfillRun,
     GithubCommentLink,
     GithubIssueLink,
     Issue,
-    IssueAssignee,
     IssueComment,
     IssueLabel,
     Label,
-    ProjectMember,
 )
 from plane.utils.exception_logger import log_exception
 from plane.utils.github_app.client import GithubAppClient
@@ -25,12 +22,14 @@ from plane.utils.github_app.refs import extract_closing_refs, extract_refs
 from .handlers import apply_pull_request_link
 from .sync import (
     body_hash,
+    ensure_bot_project_membership,
     get_or_create_bot_user,
     get_state_mapping,
     move_issue_state,
     parse_gh_datetime,
     record_github_activity,
     render_markdown,
+    sync_issue_assignees,
 )
 
 
@@ -48,17 +47,6 @@ def match_or_create_labels(project, label_names):
             existing[name.lower()] = label
         labels.append(label)
     return labels
-
-
-def match_assignees(project, gh_assignees):
-    """Match GitHub assignees to project members via their linked GitHub Account.
-    Assignees with no linked, matching project member are skipped."""
-    gh_ids = {str(assignee["id"]) for assignee in gh_assignees if assignee.get("id") is not None}
-    if not gh_ids:
-        return []
-    member_ids = ProjectMember.objects.filter(project=project).values_list("member_id", flat=True)
-    accounts = Account.objects.filter(provider="github", provider_account_id__in=gh_ids, user_id__in=member_ids)
-    return [account.user for account in accounts]
 
 
 def _import_comments(client, linked_repo, project, issue, issue_link, gh_issue_number, bot_user):
@@ -85,10 +73,14 @@ def _import_comments(client, linked_repo, project, issue, issue_link, gh_issue_n
         )
 
 
-def _import_issue(client, run, linked_repo, project, gh_issue, bot_user, state_mapping):
+def _import_issue(client, run, linked_repo, project, gh_issue, bot_user, state_mapping, assignee_cache):
+    """Import one GitHub issue. Returns True if it was imported, False if it was
+    already linked (and therefore skipped, not re-imported)."""
     gh_issue_number = gh_issue.get("number")
     if GithubIssueLink.objects.filter(linked_repo=linked_repo, gh_issue_number=gh_issue_number).exists():
-        return
+        return False
+
+    ensure_bot_project_membership(project, bot_user)
 
     issue = Issue(
         project=project,
@@ -119,10 +111,9 @@ def _import_issue(client, run, linked_repo, project, gh_issue, bot_user, state_m
             issue=issue, label=label, defaults={"project": project, "workspace": project.workspace}
         )
 
-    for user in match_assignees(project, gh_issue.get("assignees") or []):
-        IssueAssignee.objects.get_or_create(
-            issue=issue, assignee=user, defaults={"project": project, "workspace": project.workspace}
-        )
+    sync_issue_assignees(
+        issue, project, gh_issue.get("assignees") or [], issue_link, client=client, cache=assignee_cache
+    )
 
     record_github_activity(
         issue, bot_user, "created", f"imported from GitHub issue {linked_repo.full_name}#{gh_issue_number}"
@@ -133,6 +124,8 @@ def _import_issue(client, run, linked_repo, project, gh_issue, bot_user, state_m
     if gh_issue.get("state") == "closed" and run.include_closed_issues:
         target_state = (state_mapping.issue_closed_state if state_mapping else None) or project.default_state
         move_issue_state(issue, target_state, bot_user)
+
+    return True
 
 
 def _resolve_pr_issues(project, pr, imported_issues_by_number):
@@ -185,10 +178,16 @@ def _run_backfill(run):
     run.total_issues = len(gh_issues)
     run.save(update_fields=["total_issues", "updated_at"])
 
+    assignee_cache = {}
     for gh_issue in gh_issues:
         try:
-            _import_issue(client, run, linked_repo, project, gh_issue, bot_user, state_mapping)
-            run.imported_issues += 1
+            imported = _import_issue(
+                client, run, linked_repo, project, gh_issue, bot_user, state_mapping, assignee_cache
+            )
+            if imported:
+                run.imported_issues += 1
+            else:
+                run.skipped_issues += 1
         except Exception as e:
             log_exception(e)
             run.skipped_issues += 1
