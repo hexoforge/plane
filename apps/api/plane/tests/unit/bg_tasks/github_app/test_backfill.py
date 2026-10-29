@@ -10,10 +10,10 @@ from django.utils import timezone
 
 from plane.bgtasks.github_app.backfill import (
     _link_pull_request,
-    match_assignees,
     match_or_create_labels,
     run_github_backfill,
 )
+from plane.utils.github_app.assignee_mapping import map_assignees
 from plane.db.models import (
     Account,
     GithubAppInstallation,
@@ -165,6 +165,44 @@ class TestRunGithubBackfillIdempotency:
 
 @pytest.mark.unit
 @pytest.mark.django_db
+class TestBackfillSkippedVsImportedCounts:
+    def test_rerun_counts_already_linked_issues_as_skipped_not_imported(self, project, states, linked_repo):
+        issue_payload = gh_issue(1, title="Something broke")
+
+        first_run = GithubBackfillRun.objects.create(project=project, linked_repo=linked_repo)
+        client = make_client_mock(issues=[issue_payload])
+        with patch("plane.bgtasks.github_app.backfill.GithubAppClient", return_value=client):
+            run_github_backfill(str(first_run.id))
+        first_run.refresh_from_db()
+        assert first_run.imported_issues == 1
+        assert first_run.skipped_issues == 0
+
+        second_run = GithubBackfillRun.objects.create(project=project, linked_repo=linked_repo)
+        client = make_client_mock(issues=[issue_payload])
+        with patch("plane.bgtasks.github_app.backfill.GithubAppClient", return_value=client):
+            run_github_backfill(str(second_run.id))
+        second_run.refresh_from_db()
+        assert second_run.imported_issues == 0
+        assert second_run.skipped_issues == 1
+
+    def test_mix_of_new_and_already_linked_issues(self, project, states, linked_repo):
+        first_run = GithubBackfillRun.objects.create(project=project, linked_repo=linked_repo)
+        client = make_client_mock(issues=[gh_issue(1)])
+        with patch("plane.bgtasks.github_app.backfill.GithubAppClient", return_value=client):
+            run_github_backfill(str(first_run.id))
+
+        second_run = GithubBackfillRun.objects.create(project=project, linked_repo=linked_repo)
+        client = make_client_mock(issues=[gh_issue(1), gh_issue(2)])
+        with patch("plane.bgtasks.github_app.backfill.GithubAppClient", return_value=client):
+            run_github_backfill(str(second_run.id))
+
+        second_run.refresh_from_db()
+        assert second_run.imported_issues == 1
+        assert second_run.skipped_issues == 1
+
+
+@pytest.mark.unit
+@pytest.mark.django_db
 class TestRunGithubBackfillClosedToggle:
     def test_closed_issues_excluded_by_default(self, project, states, linked_repo):
         run = GithubBackfillRun.objects.create(project=project, linked_repo=linked_repo, include_closed_issues=False)
@@ -284,9 +322,10 @@ class TestLabelAndAssigneeMatching:
         outsider = UserFactory()
         Account.objects.create(user=outsider, provider="github", provider_account_id="9999")
 
-        matched = match_assignees(project, [{"id": 4242, "login": "member"}, {"id": 9999, "login": "outsider"}])
+        mapped, unmapped = map_assignees(project, [{"id": 4242, "login": "member"}, {"id": 9999, "login": "outsider"}])
 
-        assert matched == [member]
+        assert mapped == {"member": member}
+        assert unmapped == ["outsider"]
 
 
 @pytest.mark.unit

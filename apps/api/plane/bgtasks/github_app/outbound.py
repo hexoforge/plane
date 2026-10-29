@@ -10,6 +10,7 @@ from django.utils import timezone
 
 # Module imports
 from plane.db.models import (
+    Account,
     GithubCommentLink,
     GithubIssueLink,
     GithubProjectStateMapping,
@@ -20,6 +21,7 @@ from plane.db.models import (
 )
 from plane.utils.exception_logger import log_exception
 from plane.utils.github_app.client import GithubAppClient
+from plane.utils.github_app.markdown import html_to_markdown
 
 from .sync import body_hash as _hash_body
 
@@ -113,7 +115,7 @@ def sync_comment_to_github(comment_id, action):
 
         comment_link = GithubCommentLink.objects.filter(issue_comment_id=comment_id, source="plane").first()
 
-        body = comment.comment_stripped
+        body = html_to_markdown(comment.comment_html)
         body_hash = _hash_body(body)
 
         if action == "create":
@@ -136,5 +138,79 @@ def sync_comment_to_github(comment_id, action):
             client.update_issue_comment(link.linked_repo.full_name, comment_link.gh_comment_id, body)
             comment_link.last_synced_hash = body_hash
             comment_link.save(update_fields=["last_synced_hash"])
+    except Exception as e:
+        log_exception(e)
+
+
+def _resolve_login(user, known_logins, client):
+    """A Plane user's GitHub login, preferring the login this issue last saw
+    from GitHub (avoids a lookup) and falling back to their linked account."""
+    login = known_logins.get(str(user.id))
+    if login:
+        return login
+
+    account = Account.objects.filter(provider="github", user=user).first()
+    if not account:
+        return None
+    try:
+        return client.get_user_by_id(account.provider_account_id).get("login")
+    except Exception:
+        return None
+
+
+@shared_task
+def sync_issue_assignees_to_github(issue_id, actor_id=None):
+    """Mirror a Plane assignee change to the linked GitHub issue, behind the
+    project's two-way assignee sync toggle (default off). Mapped Plane
+    assignees are pushed as GitHub assignees; GitHub assignees that don't map
+    to a Plane user are left untouched.
+    """
+    try:
+        if _is_github_bot_actor(actor_id):
+            return
+
+        link = (
+            GithubIssueLink.objects.filter(issue_id=issue_id)
+            .select_related("linked_repo", "linked_repo__installation")
+            .first()
+        )
+        if not link:
+            return
+
+        mapping = GithubProjectStateMapping.objects.filter(project_id=link.project_id).first()
+        if not mapping or not mapping.sync_assignees:
+            return
+
+        stored_entries = link.assignee_logins or []
+        known_logins = {entry["user_id"]: entry["login"] for entry in stored_entries if entry.get("user_id")}
+        unmapped_gh_logins = {entry["login"] for entry in stored_entries if not entry.get("mapped")}
+        current_gh_logins = {entry["login"] for entry in stored_entries}
+
+        client = GithubAppClient(link.linked_repo.installation.installation_id)
+        assignees = User.objects.filter(issue_assignee__issue_id=issue_id, issue_assignee__deleted_at__isnull=True)
+        plane_logins = {
+            login
+            for login in (_resolve_login(user, known_logins, client) for user in assignees)
+            if login
+        }
+
+        desired_logins = plane_logins | unmapped_gh_logins
+        if desired_logins == current_gh_logins:
+            return
+
+        response = client.update_issue_assignees(link.linked_repo.full_name, link.gh_issue_number, desired_logins)
+        response_logins = {entry.get("login") for entry in response.get("assignees") or [] if entry.get("login")}
+
+        user_id_by_login = {login: user_id for user_id, login in known_logins.items()}
+        for user in assignees:
+            resolved = _resolve_login(user, known_logins, client)
+            if resolved:
+                user_id_by_login[resolved] = str(user.id)
+
+        link.assignee_logins = [
+            {"login": login, "mapped": login in user_id_by_login, "user_id": user_id_by_login.get(login)}
+            for login in sorted(response_logins or desired_logins)
+        ]
+        link.save(update_fields=["assignee_logins", "updated_at"])
     except Exception as e:
         log_exception(e)

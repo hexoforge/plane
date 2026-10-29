@@ -55,6 +55,7 @@ class GithubProjectStateMappingSerializer(DynamicBaseSerializer):
             "issue_reopened_state_detail",
             "auto_create_issues",
             "sync_comments",
+            "sync_assignees",
         ]
         read_only_fields = ["id", "project_id"]
 
@@ -120,5 +121,6 @@ class GithubIssueLinkSerializer(DynamicBaseSerializer):
             "url",
             "gh_state",
             "gh_updated_at",
+            "assignee_logins",
         ]
         read_only_fields = [f for f in fields if f != "repository_full_name"]
