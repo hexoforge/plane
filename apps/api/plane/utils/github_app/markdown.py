@@ -252,6 +252,7 @@ _RENDERERS = {
     "list_item": _render_list_item,
     "table": _render_table,
     "table_head": _render_table_row,
+    "table_row": _render_table_row,
     "table_cell": _render_table_cell,
     "blank_line": lambda tok: "",
 }

@@ -54,6 +54,10 @@ class TestRenderMarkdownConstructs:
         assert "<thead><tr><th>a</th><th>b</th></tr></thead>" in html
         assert "<tbody><tr><td>1</td><td>2</td></tr></tbody>" in html
 
+    def test_table_multiple_body_rows_stay_separate(self):
+        html = render_markdown("| a | b |\n|---|---|\n| 1 | 2 |\n| 3 | 4 |")
+        assert "<tbody><tr><td>1</td><td>2</td></tr><tr><td>3</td><td>4</td></tr></tbody>" in html
+
     def test_task_list_checked_and_unchecked(self):
         html = render_markdown("- [ ] todo\n- [x] done")
         assert '<ul data-type="taskList">' in html
